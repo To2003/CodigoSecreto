@@ -42,3 +42,20 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Estado**: Aceptada (2026-11-07)
 - **Contexto**: el KICKOFF dice que `SPEC.md` está en la raíz, pero el repo estaba vacío; ambos llegaron como adjuntos.
 - **Decisión**: `SPEC.md` copiado tal cual a la raíz; `KICKOFF.md` a `docs/KICKOFF.md` como referencia del proceso.
+
+## ADR-007 — TypeScript 6.0.x fijado (no 7.x)
+- **Estado**: Aceptada (2026-11-07, plan M0)
+- **Contexto**: la última es TS 7 (compilador nativo). `typescript-eslint@8.72` declara peer `typescript >=4.8.4 <6.1.0`.
+- **Decisión**: `typescript ~6.0.3` en la raíz. Se revisa cuando `typescript-eslint` soporte 7.
+- **Por qué**: sin lint con información de tipos perdemos las reglas `strictTypeChecked`.
+
+## ADR-008 — ESLint 9 (no 10)
+- **Estado**: Aceptada (2026-11-07, plan M0)
+- **Contexto**: `eslint-plugin-react@7.37` (para `react/jsx-no-literals`, la regla que obliga a pasar el copy por `es-AR.ts`) declara peer `eslint ^9.7`.
+- **Decisión**: ESLint 9 con flat config.
+
+## ADR-009 — `@clave/shared` se consume como fuente TypeScript
+- **Estado**: Aceptada (2026-11-07, plan M0)
+- **Decisión**: `packages/shared` exporta `src/*.ts` directo vía `exports` en su `package.json`, sin paso de build. Vite (web), `tsx` (server en dev) y `tsup` (build del server) lo compilan. Todos los paquetes usan `moduleResolution: "Bundler"` y `tsc` solo para typecheck (`noEmit`).
+- **Por qué**: cero builds intermedios ni `dist/` desactualizados en dev; los cambios del motor se ven al instante en web y server.
+- **Descartadas**: project references con `tsc -b` (más configuración y un `dist/` que se desincroniza).
