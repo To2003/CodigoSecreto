@@ -103,3 +103,11 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Contexto**: hookify sugiere ignorar `.claude/*.local.md` en git, pero las reglas del KICKOFF §4 son del proyecto, no de una máquina.
 - **Decisión**: `.claude/hookify.*.local.md` va al repo: bloquear saltear el pre-commit, avisar al editar `SPEC.md` y avisar si se emite estado de cartas fuera de `toPublicView`.
 - **Por qué**: así las reglas viajan con el repo y aplican en cualquier sesión de Claude Code (cloud o VS Code). `.claude/settings.local.json` sigue ignorado.
+
+## ADR-015 — Floor guard en `commit-msg` con trailer `Floor-Test-Change`
+
+- **Estado**: Aceptada (2026-11-07, cierre de M0)
+- **Contexto**: el piso permite quitar o saltear tests "con motivo en el mensaje del commit", pero un pre-commit no puede leer el mensaje. La review de M0 pidió reemplazar un test que nunca podía fallar, y el guard lo bloqueó sin salida legítima.
+- **Decisión**: el guard corre en el hook `commit-msg` (`--staged --commit-msg "$1"`). Los hallazgos de tests (`test-deleted`, `assertion-removed`, `test-made-easier`) pasan a aviso solo si el mensaje trae `Floor-Test-Change: <motivo>` (10+ caracteres). Todo lo demás sigue bloqueando.
+- **Por qué**: implementa la regla como está escrita y deja el motivo en `git log`, a la vista en review. Sin esto, la única salida era `--no-verify` (bloqueado por hookify) o reescribir el test para engañar al guard.
+- **Descartadas**: una excepción en CONSTRAINTS por cada cambio de test (demasiado ruido); no tener escape.

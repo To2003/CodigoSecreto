@@ -8,7 +8,7 @@ Ajustarlo hacia abajo requiere OK explícito de @To2003 en un commit aparte del 
 
 ## Piso (siempre, desde el primer commit)
 
-Lo verifica `node scripts/floor-guard.mjs` sobre el diff contra el merge base con `main` (mientras no exista `main`, contra `HEAD`; en CI sin base sale con error, nunca "clean"). El pre-commit usa `--staged`: revisa exactamente lo que se commitea. Tests del guard en `scripts/floor-guard.test.ts`.
+Lo verifica `node scripts/floor-guard.mjs` sobre el diff contra el merge base con `main` (mientras no exista `main`, contra `HEAD`; en CI sin base sale con error, nunca "clean"). Corre en el hook `commit-msg` con `--staged --commit-msg`: revisa exactamente lo que se commitea y puede leer el mensaje. Tests del guard en `scripts/floor-guard.test.ts`.
 
 - Sin comentarios de supresión nuevos: `@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable`, `istanbul ignore`, `v8 ignore`/`c8 ignore`, `nosemgrep`, `gitleaks:allow`.
 - Sin stubs sin implementar: `throw new Error("Not implemented")`, `catch {}` vacío (con o sin parámetro tipado), `.catch(() => {})`, `TODO` en lugar de código.
@@ -16,6 +16,7 @@ Lo verifica `node scripts/floor-guard.mjs` sobre el diff contra el merge base co
 - Sin secretos en el código (`.env` nunca se commitea; existe `.env.example`).
 - Este archivo no se debilita para que un cambio pase.
 - Tests enfocados: no se commitea `.only` ni `skipIf`/`runIf` nuevos.
+- Motivo de un cambio de tests: quitar, saltear o borrar un test solo se acepta con el trailer `Floor-Test-Change: <motivo>` (10+ caracteres) en el mensaje del commit. No excusa supresiones, stubs, secretos ni umbrales.
 - Secretos obvios: el guard tiene un detector mínimo (claves AWS, llaves privadas, tokens de GitHub/Slack/Stripe/Google) que nunca imprime el valor. No reemplaza a gitleaks, que corre en CI desde M8.
 
 ## Con número, bloqueantes
@@ -67,7 +68,7 @@ Estos criterios del SPEC no tienen un checker que corra en CI. Se verifican a ma
 | Etapa                | Comando                 | Qué corre                                                                             | Presupuesto |
 | -------------------- | ----------------------- | ------------------------------------------------------------------------------------- | ----------- |
 | Edición              | `pnpm check:fast`       | typecheck + lint + floor-guard                                                        | < 10 s      |
-| Pre-commit (bloquea) | hook `simple-git-hooks` | `check:fast` + tests de `packages/shared`                                             | < 30 s      |
+| Pre-commit (bloquea) | hook `simple-git-hooks` | typecheck + lint + formato + tests de `packages/shared`; `commit-msg`: floor guard    | < 30 s      |
 | Fin de tarea         | `pnpm check:task`       | `check:fast` + tests con cobertura + diff-coverage                                    | < 90 s      |
 | CI / cierre de hito  | `pnpm check:full`       | `check:task` + e2e + axe + size-limit + Lighthouse + gitleaks + osv-scanner + semgrep | sin límite  |
 
