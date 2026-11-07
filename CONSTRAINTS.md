@@ -8,13 +8,15 @@ Ajustarlo hacia abajo requiere OK explícito de @To2003 en un commit aparte del 
 
 ## Piso (siempre, desde el primer commit)
 
-Lo verifica `node scripts/floor-guard.mjs` sobre el diff (bloquea el commit, M0 en adelante):
+Lo verifica `node scripts/floor-guard.mjs` sobre el diff contra el merge base con `main` (mientras no exista `main`, contra `HEAD`; en CI sin base sale con error, nunca "clean"). El pre-commit usa `--staged`: revisa exactamente lo que se commitea. Tests del guard en `scripts/floor-guard.test.ts`.
 
-- Sin comentarios de supresión nuevos: `@ts-ignore`, `@ts-nocheck`, `eslint-disable`, `istanbul ignore`, `nosemgrep`, `gitleaks:allow`.
-- Sin stubs sin implementar: `throw new Error("Not implemented")`, `catch {}` vacío, `TODO` en lugar de código.
+- Sin comentarios de supresión nuevos: `@ts-ignore`, `@ts-nocheck`, `@ts-expect-error`, `eslint-disable`, `istanbul ignore`, `v8 ignore`/`c8 ignore`, `nosemgrep`, `gitleaks:allow`.
+- Sin stubs sin implementar: `throw new Error("Not implemented")`, `catch {}` vacío (con o sin parámetro tipado), `.catch(() => {})`, `TODO` en lugar de código.
 - Sin tests salteados (`.skip`, `.todo`, `xit`) ni tests borrados ni assertions quitadas sin motivo en el mensaje del commit.
 - Sin secretos en el código (`.env` nunca se commitea; existe `.env.example`).
 - Este archivo no se debilita para que un cambio pase.
+- Tests enfocados: no se commitea `.only` ni `skipIf`/`runIf` nuevos.
+- Secretos obvios: el guard tiene un detector mínimo (claves AWS, llaves privadas, tokens de GitHub/Slack/Stripe/Google) que nunca imprime el valor. No reemplaza a gitleaks, que corre en CI desde M8.
 
 ## Con número, bloqueantes
 
@@ -77,4 +79,4 @@ Las filas con "Desde" futuro se activan en ese hito (instalar la herramienta y a
 | --- | ----- | ---- | ------ | ----- | ----- |
 | —   | —     | —    | —      | —     | —     |
 
-Toda excepción nueva tiene dueño y vence en ≤ 90 días.
+Toda excepción nueva tiene dueño y vence en ≤ 90 días. IDs: `E1`, `E2`, … (el floor guard marca cada fila nueva para que se discuta).
