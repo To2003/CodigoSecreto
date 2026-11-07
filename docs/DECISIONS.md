@@ -6,6 +6,7 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 ---
 
 ## ADR-001 — Node 24 LTS en lugar de Node 20
+
 - **Estado**: Aceptada (2026-11-07, OK de @To2003)
 - **Contexto**: SPEC §0.3 pide Node 20. Node 20 llegó a fin de vida en abril 2026; el entorno local es Node 24.
 - **Decisión**: Node 24 LTS para server y CI. `.nvmrc` = `24`, `engines.node` = `>=22`.
@@ -13,6 +14,7 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Descartadas**: Node 20 (EOL); Node 22 (en mantenimiento, sin ventaja sobre 24).
 
 ## ADR-002 — Floor guard propio, adaptado de la referencia de agent-skills
+
 - **Estado**: Aceptada (2026-11-07)
 - **Contexto**: `CONSTRAINTS.md` define un "piso" (sin supresiones, stubs, tests salteados, umbrales relajados) que no tiene una herramienta estándar.
 - **Decisión**: `scripts/floor-guard.mjs`, copia de la implementación de referencia de la skill `constraint-driven-development`, con dos cambios: (1) si no existe `main`/`origin/main`, compara contra el árbol vacío; (2) `.constraintsignore` exime archivos de los chequeos de patrones (los `.md` que nombran los patrones y el propio guard).
@@ -20,6 +22,7 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Descartadas**: escribir uno desde cero; no tener guard.
 
 ## ADR-003 — Escaneo de seguridad solo en CI
+
 - **Estado**: Aceptada (2026-11-07, OK de @To2003)
 - **Contexto**: gitleaks, osv-scanner y Semgrep son binarios que no vienen por npm.
 - **Decisión**: corren solo en GitHub Actions desde M8; bloquean el merge con hallazgos high o mayores. `gitleaks` siempre con `--redact`.
@@ -27,6 +30,7 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Descartadas**: correrlos también local (requiere instalación global); no escanear (ninguna opinión externa).
 
 ## ADR-004 — Cobertura: motor ≥ 95%, server ≥ 80% líneas cambiadas, web medida
+
 - **Estado**: Aceptada (2026-11-07, OK de @To2003)
 - **Contexto**: SPEC §1.8 solo fija ≥ 95% para el motor.
 - **Decisión**: server ≥ 80% de las líneas cambiadas (lcov + `git diff`); web sin umbral, se mide y no puede bajar (ratchet). La UI se cubre principalmente con E2E.
@@ -34,28 +38,41 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Descartadas**: solo el motor; 80% en todo.
 
 ## ADR-005 — Qué bloquea y qué avisa
+
 - **Estado**: Aceptada (2026-11-07, OK de @To2003)
 - **Decisión**: el pre-commit bloquea si fallan typecheck, lint, tests de `packages/shared` o el floor guard. Lighthouse avisa hasta M8; el resto se activa en el hito indicado en `CONSTRAINTS.md`.
 - **Por qué**: lo que corre en segundos va en el loop; lo lento va a CI para que nadie termine usando `--no-verify`.
 
 ## ADR-006 — `SPEC.md` en la raíz y `KICKOFF.md` en `docs/`
+
 - **Estado**: Aceptada (2026-11-07)
 - **Contexto**: el KICKOFF dice que `SPEC.md` está en la raíz, pero el repo estaba vacío; ambos llegaron como adjuntos.
 - **Decisión**: `SPEC.md` copiado tal cual a la raíz; `KICKOFF.md` a `docs/KICKOFF.md` como referencia del proceso.
 
 ## ADR-007 — TypeScript 6.0.x fijado (no 7.x)
+
 - **Estado**: Aceptada (2026-11-07, plan M0)
 - **Contexto**: la última es TS 7 (compilador nativo). `typescript-eslint@8.72` declara peer `typescript >=4.8.4 <6.1.0`.
 - **Decisión**: `typescript ~6.0.3` en la raíz. Se revisa cuando `typescript-eslint` soporte 7.
 - **Por qué**: sin lint con información de tipos perdemos las reglas `strictTypeChecked`.
 
 ## ADR-008 — ESLint 9 (no 10)
-- **Estado**: Aceptada (2026-11-07, plan M0)
+
+- **Estado**: Reemplazada por ADR-010 (2026-11-07)
 - **Contexto**: `eslint-plugin-react@7.37` (para `react/jsx-no-literals`, la regla que obliga a pasar el copy por `es-AR.ts`) declara peer `eslint ^9.7`.
 - **Decisión**: ESLint 9 con flat config.
 
 ## ADR-009 — `@clave/shared` se consume como fuente TypeScript
+
 - **Estado**: Aceptada (2026-11-07, plan M0)
 - **Decisión**: `packages/shared` exporta `src/*.ts` directo vía `exports` en su `package.json`, sin paso de build. Vite (web), `tsx` (server en dev) y `tsup` (build del server) lo compilan. Todos los paquetes usan `moduleResolution: "Bundler"` y `tsc` solo para typecheck (`noEmit`).
 - **Por qué**: cero builds intermedios ni `dist/` desactualizados en dev; los cambios del motor se ven al instante en web y server.
 - **Descartadas**: project references con `tsc -b` (más configuración y un `dist/` que se desincroniza).
+
+## ADR-010 — ESLint 10 con `@eslint-react` e `i18next/no-literal-string`
+
+- **Estado**: Aceptada (2026-11-07, reemplaza ADR-008)
+- **Contexto**: al instalar, ESLint 9 figura como deprecado (sin soporte) y `eslint-plugin-react` no se actualiza desde abril 2025.
+- **Decisión**: ESLint 10 + `typescript-eslint` (strict + stylistic, con tipos) + `@eslint-react/eslint-plugin` (reglas de React) + `eslint-plugin-react-hooks` + `eslint-plugin-i18next` con `no-literal-string` en modo `jsx-text-only` sobre `apps/web/src/**/*.tsx` + `eslint-config-prettier`.
+- **Por qué**: todos declaran soporte para ESLint 10; `no-literal-string` cumple la misma función que `react/jsx-no-literals` (obligar a que el copy salga de `es-AR.ts`) sin atarnos a un plugin abandonado. No usamos la librería i18next, solo la regla.
+- **Descartadas**: ESLint 9 (EOL); `eslint-plugin-react` con ESLint 10 fuera de su rango de peers.
