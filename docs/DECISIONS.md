@@ -76,3 +76,16 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Decisión**: ESLint 10 + `typescript-eslint` (strict + stylistic, con tipos) + `@eslint-react/eslint-plugin` (reglas de React) + `eslint-plugin-react-hooks` + `eslint-plugin-i18next` con `no-literal-string` en modo `jsx-text-only` sobre `apps/web/src/**/*.tsx` + `eslint-config-prettier`.
 - **Por qué**: todos declaran soporte para ESLint 10; `no-literal-string` cumple la misma función que `react/jsx-no-literals` (obligar a que el copy salga de `es-AR.ts`) sin atarnos a un plugin abandonado. No usamos la librería i18next, solo la regla.
 - **Descartadas**: ESLint 9 (EOL); `eslint-plugin-react` con ESLint 10 fuera de su rango de peers.
+
+## ADR-011 — Server: `tsx` en dev, `tsup` para el build
+
+- **Estado**: Aceptada (2026-11-07, plan M0)
+- **Decisión**: `pnpm dev` corre `tsx watch src/index.ts`; `pnpm build` genera `dist/index.js` (ESM) con `tsup`, bundleando `@clave/shared` (que es fuente TS, ADR-009) y dejando externas las dependencias npm.
+- **Por qué**: Render ejecuta JS plano con `node dist/index.js`, sin compilar TS en el arranque (que con el server dormido ya tarda 30–60 s).
+
+## ADR-012 — Socket.IO rechaza orígenes no permitidos con `allowRequest`
+
+- **Estado**: Aceptada (2026-11-07, M0)
+- **Contexto**: la opción `cors` de Socket.IO solo agrega headers para el polling HTTP; un handshake WebSocket desde otro sitio pasa igual (cross-site WebSocket hijacking).
+- **Decisión**: `allowRequest` compara el header `Origin` con `CLIENT_ORIGIN` (lista separada por comas) y rechaza el resto. Express usa `cors` con la misma lista.
+- **Por qué**: SPEC §2.5 pide CORS restringido; esto lo cumple también para WebSocket. No reemplaza al rate limit ni a la validación Zod.
