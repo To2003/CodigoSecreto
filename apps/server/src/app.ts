@@ -43,7 +43,12 @@ export function createServer({ clientOrigins, log }: ServerOptions): ClaveServer
     // CORS headers alone don't stop a WebSocket handshake; check the Origin explicitly.
     allowRequest: (req, callback) => {
       const allowed = isAllowed(req.headers.origin);
-      if (!allowed) log.warn('socket rejected: origin not allowed', { origin: req.headers.origin });
+      if (!allowed) {
+        // The Origin header is attacker-controlled: cap what reaches the logs.
+        log.warn('socket rejected: origin not allowed', {
+          origin: req.headers.origin?.slice(0, 200),
+        });
+      }
       callback(null, allowed);
     },
   });

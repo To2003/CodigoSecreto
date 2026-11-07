@@ -73,3 +73,26 @@ describe('Socket.IO', () => {
     expect(await connect(url, 'https://evil.example')).toBe('rejected');
   });
 });
+
+describe('Socket.IO handshake over HTTP polling (how browsers start)', () => {
+  const handshake = (target: ClaveServer['httpServer'], origin?: string) => {
+    const req = request(target).get('/socket.io/?EIO=4&transport=polling');
+    return origin === undefined ? req : req.set('Origin', origin);
+  };
+
+  it('accepts the client origin', async () => {
+    const { httpServer } = make();
+    const res = await handshake(httpServer, ALLOWED);
+    expect(res.status).toBe(200);
+  });
+
+  it.each([
+    ['another origin', 'https://evil.example'],
+    ['the null origin', 'null'],
+    ['no Origin header', undefined],
+  ])('rejects %s', async (_label, origin) => {
+    const { httpServer } = make();
+    const res = await handshake(httpServer, origin);
+    expect(res.status).toBe(403);
+  });
+});
