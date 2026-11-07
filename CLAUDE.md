@@ -66,3 +66,4 @@ docs/{DECISIONS.md,BACKLOG.md}
 - Mejoras fuera del alcance del hito → `docs/BACKLOG.md`, no se implementan.
 - Regla del juego ambigua → preguntar, no interpretar.
 - No crear cuentas, no deployar, no instalar global con `sudo`, no agregar dependencias pagas.
+- Correr los comandos **desde la raíz del repo** (`pnpm --filter <paquete> …` o subshells `(cd apps/web && …)`): las reglas de hookify en `.claude/` solo se cargan si el cwd es la raíz.
