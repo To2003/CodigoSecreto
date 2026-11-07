@@ -76,6 +76,7 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Decisión**: ESLint 10 + `typescript-eslint` (strict + stylistic, con tipos) + `@eslint-react/eslint-plugin` (reglas de React) + `eslint-plugin-react-hooks` + `eslint-plugin-i18next` con `no-literal-string` en modo `jsx-text-only` sobre `apps/web/src/**/*.tsx` + `eslint-config-prettier`.
 - **Por qué**: todos declaran soporte para ESLint 10; `no-literal-string` cumple la misma función que `react/jsx-no-literals` (obligar a que el copy salga de `es-AR.ts`) sin atarnos a un plugin abandonado. No usamos la librería i18next, solo la regla.
 - **Descartadas**: ESLint 9 (EOL); `eslint-plugin-react` con ESLint 10 fuera de su rango de peers.
+- **Actualización (review M0)**: modo `jsx-only` (también `{'…'}`) y validación de los atributos que se leen o se escuchan (`placeholder`, `title`, `alt`, `label`, `aria-label` y afines); el resto de los atributos no es copy.
 
 ## ADR-011 — Server: `tsx` en dev, `tsup` para el build
 

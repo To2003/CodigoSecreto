@@ -56,7 +56,30 @@ export default tseslint.config(
   {
     files: ['apps/web/src/**/*.tsx'],
     plugins: { i18next },
-    rules: { 'i18next/no-literal-string': ['error', { mode: 'jsx-text-only' }] },
+    rules: {
+      'i18next/no-literal-string': [
+        'error',
+        {
+          // JSX text, string expressions ({'…'}) and the attributes people read or hear.
+          mode: 'jsx-only',
+          'jsx-attributes': {
+            include: [
+              'placeholder',
+              'title',
+              'alt',
+              'label',
+              'aria-label',
+              'aria-description',
+              'aria-placeholder',
+              'aria-roledescription',
+              'aria-valuetext',
+            ],
+            // Every other attribute (className, SVG geometry, data-*, …) is not copy.
+            exclude: ['.*'],
+          },
+        },
+      ],
+    },
   },
 
   prettier,
