@@ -38,6 +38,6 @@
     "vitest": "^5.1.0"
   },
   "simple-git-hooks": {
-    "pre-commit": "pnpm check:fast && pnpm --filter @clave/shared test"
+    "pre-commit": "pnpm typecheck && pnpm lint && pnpm format:check && node scripts/floor-guard.mjs --staged && pnpm --filter @clave/shared test"
   }
 }

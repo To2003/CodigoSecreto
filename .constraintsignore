@@ -4,3 +4,5 @@
 **/*.md
 # El propio guard contiene los patrones que busca:
 scripts/floor-guard.mjs
+# Los tests del guard escriben a propósito los patrones que tiene que detectar:
+scripts/floor-guard.test.ts

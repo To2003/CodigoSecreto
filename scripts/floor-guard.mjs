@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 // floor-guard.mjs — diff-scoped enforcement of the CONSTRAINTS.md floor.
 // Adapted from the agent-skills constraint-driven-development reference implementation.
-// Usage: node scripts/floor-guard.mjs [--base <ref>]
-// Base: --base, else $FLOOR_GUARD_BASE, else the first of origin/main, main that exists.
-// While the repo has no main branch yet, the diff is taken against the empty tree (every file is checked).
+// Usage: node scripts/floor-guard.mjs [--base <ref>] [--staged]
+// Base: --base, else $FLOOR_GUARD_BASE, else the merge base with origin/main or main.
+// Without a main branch: HEAD locally (so the current change is still checked, deletions included);
+// in CI ($CI set) that is an error (exit 2), never a silent "clean". Empty tree only before the first commit.
+// --staged (pre-commit): checks exactly what is being committed (the index), not the working tree.
 // Exit codes: 0 clean, 1 floor violation, 2 the guard could not run.
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 
+const staged = process.argv.includes('--staged');
 const explicitBase = (() => {
   const i = process.argv.indexOf('--base');
   return i > -1 ? process.argv[i + 1] : process.env.FLOOR_GUARD_BASE || null;
@@ -17,7 +20,11 @@ const explicitBase = (() => {
 // new file, so that output is kept. Any other failure is null, and null never reads as clean.
 const git = (args, { diffExit = false } = {}) => {
   try {
-    return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    // quotePath=false: non-ASCII paths come through unquoted, so they match .constraintsignore.
+    return execFileSync('git', ['-c', 'core.quotePath=false', ...args], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
   } catch (e) {
     return diffExit && e.status === 1 && typeof e.stdout === 'string' ? e.stdout : null;
   }
@@ -35,8 +42,6 @@ if (!top) bail('not inside a git work tree');
 process.chdir(top);
 
 // Merge base; bail to exit 2 rather than pretending a shallow/rootless clone is clean.
-// An explicit base that cannot be resolved is an error; the defaults fall back to the empty tree
-// only when neither origin/main nor main exists (a brand-new repo).
 const resolves = (ref) => git(['rev-parse', '--verify', '--quiet', ref + '^{commit}']) !== null;
 let base, mergeBase;
 if (explicitBase) {
@@ -48,8 +53,14 @@ if (explicitBase) {
   if (base) {
     mergeBase = git(['merge-base', base, 'HEAD'])?.trim();
     if (!mergeBase) bail('no merge base against ' + base);
+  } else if (process.env.CI) {
+    bail('no origin/main or main to compare against (fetch it, or pass --base)');
+  } else if (resolves('HEAD')) {
+    base = 'HEAD (no main branch yet)';
+    mergeBase = 'HEAD';
   } else {
-    // `git mktree` with no input writes the empty tree into the object store (a fresh repo lacks it).
+    // Before the first commit. `git mktree` with no input writes the empty tree into the object
+    // store (a fresh repo lacks it).
     base = '(empty tree)';
     try {
       mergeBase = execFileSync('git', ['mktree'], { input: '', encoding: 'utf8' }).trim();
@@ -67,10 +78,11 @@ const globToRe = (g) =>
       g
         .replace(/[.+^${}()|[\]\\]/g, '\\$&')
         .replace(/\*\*\//g, '\uE000')
-        .replace(/\*\*/g, '.*')
+        .replace(/\*\*/g, '\uE001')
         .replace(/\*/g, '[^/]*')
         .replace(/\?/g, '[^/]')
-        .replace(/\uE000/g, '(?:.*/)?') +
+        .replace(/\uE000/g, '(?:.*/)?')
+        .replace(/\uE001/g, '.*') +
       '$',
   );
 const ignoreRes = existsSync('.constraintsignore')
@@ -82,10 +94,15 @@ const ignoreRes = existsSync('.constraintsignore')
   : [];
 const isIgnored = (f) => ignoreRes.some((re) => re.test(f));
 
-// Unified diff plus untracked files (git diff alone cannot see new files).
-const tracked = git(['diff', '--unified=0', mergeBase, '--']);
+// Unified diff plus untracked files (git diff alone cannot see new files). With --staged, only the
+// index: what the commit will contain, regardless of what else sits in the working tree.
+const tracked = git(
+  staged
+    ? ['diff', '--cached', '--unified=0', mergeBase, '--']
+    : ['diff', '--unified=0', mergeBase, '--'],
+);
 if (tracked === null) bail('could not diff against ' + mergeBase);
-const untrackedFiles = git(['ls-files', '--others', '--exclude-standard']);
+const untrackedFiles = staged ? '' : git(['ls-files', '--others', '--exclude-standard']);
 if (untrackedFiles === null) bail('could not list untracked files');
 const untracked = untrackedFiles
   .split('\n')
@@ -130,15 +147,20 @@ const isConstraints = (f) => /CONSTRAINTS\.md$/.test(f);
 
 // 1. Silenced checker — extend this list for your ecosystem.
 const SUPPRESSIONS =
-  /@ts-ignore|@ts-nocheck|eslint-disable|biome-ignore|# *noqa|# *type: *ignore|istanbul ignore|nosemgrep|gitleaks:allow|Stryker disable/;
+  /@ts-ignore|@ts-nocheck|@ts-expect-error|eslint-disable|biome-ignore|# *noqa|# *type: *ignore|istanbul ignore|[vc]8 ignore|nosemgrep|gitleaks:allow|Stryker disable/;
 // 4. Unfinished work.
 const STUBS =
-  /throw new (Error|NotImplemented).*[Nn]ot implemented|catch\s*\(\w*\)\s*\{\s*\}|catch\s*\{\s*\}|\bTODO\b|\bpass\s*# *stub/;
+  /throw new (Error|NotImplemented).*[Nn]ot implemented|catch\s*(\([^)]*\))?\s*\{\s*\}|\.catch\(\s*\(\s*\w*\s*\)\s*=>\s*\{\s*\}\s*\)|\bTODO\b|\bpass\s*# *stub/;
 // 2. A test made easier (added skips).
-const SKIPS = /\.(skip|todo)\b|\bxit\(|\bxdescribe\(|@pytest\.mark\.skip|t\.Skip\(/;
+const SKIPS =
+  /\.(skip|todo|only)\b|\.(skipIf|runIf)\(|\bxit\(|\bxdescribe\(|@pytest\.mark\.skip|t\.Skip\(/;
+// 5. Obvious secrets. A tripwire, not a scanner: gitleaks runs in CI (CONSTRAINTS.md). Values are never printed.
+const SECRETS =
+  /AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|\b(sk|rk)_live_[0-9a-zA-Z]{16,}|\bghp_[0-9A-Za-z]{36}\b|\bxox[baprs]-[0-9A-Za-z-]{10,}|\bAIza[0-9A-Za-z_-]{35}\b/;
 
 for (const { file, text } of added) {
   if (isConstraints(file) && /^\| *(W|E)\d+ *\|/.test(text)) flag('new-exception', file, text);
+  if (SECRETS.test(text)) flag('possible-secret', file, '(value redacted)');
   if (isIgnored(file)) continue;
   if (SUPPRESSIONS.test(text)) flag('silenced-checker', file, text);
   if (STUBS.test(text)) flag('unfinished-work', file, text);
@@ -175,11 +197,13 @@ const ruleKey = (t) => {
   return null; // prose, headings, dates: not a rule
 };
 const isException = (t) => /^\| *(W|E)\d+ *\|/.test(t.trim());
-const MIN_BEFORE = /(>=|>|≥|at least|minimum|\bmin\b|no less than|not fall|not drop)\s*$/;
+const MIN_BEFORE =
+  /(>=|>|≥|at least|minimum|\bmin\b|no less than|not fall|not drop|al menos|mínimo|no puede bajar)\s*$/;
 const MAX_BEFORE =
-  /(<=|<|≤|at most|maximum|\bmax\b|no more than|under|below|not grow|not exceed)\s*$/;
-const MIN_AFTER = /^\s*\S*\s*(or more|or higher|must not fall|must not drop)/;
-const MAX_AFTER = /^\s*\S*\s*(or less|or lower|must not grow|must not exceed)/;
+  /(<=|<|≤|at most|maximum|\bmax\b|no more than|under|below|not grow|not exceed|como máximo|máximo|máx\.?|no puede crecer|menos de)\s*$/;
+const MIN_AFTER = /^\s*\S*\s*(or more|or higher|must not fall|must not drop|o más|no puede bajar)/;
+const MAX_AFTER =
+  /^\s*\S*\s*(or less|or lower|must not grow|must not exceed|o menos|no puede crecer)/;
 const thresholds = (t) => {
   const out = [],
     re = /\d+(?:\.\d+)?/g;
@@ -228,7 +252,7 @@ if (findings.length === 0) {
   console.log('floor-guard: clean (base: ' + base + ')');
   process.exit(0);
 }
-console.error('floor-guard: ' + findings.length + ' floor violation(s):');
+console.error('floor-guard: ' + findings.length + ' floor violation(s) (base: ' + base + '):');
 for (const f of findings) console.error(`  [${f.rule}] ${f.file}: ${f.text}`);
 if (findings.some((f) => f.rule === 'rule-removed')) {
   console.error(
