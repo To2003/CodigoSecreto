@@ -1,0 +1,33 @@
+@import 'tailwindcss';
+
+/* Design tokens (SPEC §5.2). The color-blind palette overrides these in M4. */
+:root {
+  --bg: #1b1e24;
+  --paper: #efe6d2;
+  --ink: #22201c;
+  --red: #d6453d;
+  --red-soft: #f2b8b2;
+  --blue: #2f6fb3;
+  --blue-soft: #b5cde8;
+  --civil: #c9b994;
+  --traitor: #111111;
+  --accent: #e8c547;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-red: var(--red);
+  --color-red-soft: var(--red-soft);
+  --color-blue: var(--blue);
+  --color-blue-soft: var(--blue-soft);
+  --color-civil: var(--civil);
+  --color-traitor: var(--traitor);
+  --color-accent: var(--accent);
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--paper);
+}
