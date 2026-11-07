@@ -1,0 +1,6 @@
+# Archivos exentos de los chequeos de patrones del piso (supresiones, stubs, skips).
+# Las reglas sobre CONSTRAINTS.md (umbrales, excepciones) aplican siempre.
+# Docs que nombran los patrones para describirlos:
+**/*.md
+# El propio guard contiene los patrones que busca:
+scripts/floor-guard.mjs
