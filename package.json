@@ -7,13 +7,19 @@
     "node": ">=22"
   },
   "scripts": {
+    "dev": "pnpm --filter \"./apps/*\" --parallel --stream dev",
+    "build": "pnpm -r --if-present build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc -p . && pnpm -r --if-present typecheck",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "coverage": "vitest run --coverage"
+    "check:fast": "pnpm typecheck && pnpm lint && pnpm format:check && node scripts/floor-guard.mjs",
+    "check:task": "pnpm check:fast && pnpm coverage",
+    "check:full": "pnpm check:task && pnpm build",
+    "prepare": "simple-git-hooks"
   },
   "devDependencies": {
     "@eslint-react/eslint-plugin": "^5.28.8",
@@ -26,8 +32,12 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.14.0",
     "prettier": "^3.9.10",
+    "simple-git-hooks": "^2.14.0",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.72.1",
     "vitest": "^5.1.0"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm check:fast && pnpm --filter @clave/shared test"
   }
 }

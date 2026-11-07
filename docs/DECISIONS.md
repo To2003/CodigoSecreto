@@ -89,3 +89,10 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Contexto**: la opción `cors` de Socket.IO solo agrega headers para el polling HTTP; un handshake WebSocket desde otro sitio pasa igual (cross-site WebSocket hijacking).
 - **Decisión**: `allowRequest` compara el header `Origin` con `CLIENT_ORIGIN` (lista separada por comas) y rechaza el resto. Express usa `cors` con la misma lista.
 - **Por qué**: SPEC §2.5 pide CORS restringido; esto lo cumple también para WebSocket. No reemplaza al rate limit ni a la validación Zod.
+
+## ADR-013 — Pre-commit con `simple-git-hooks`
+
+- **Estado**: Aceptada (2026-11-07, plan M0)
+- **Decisión**: `simple-git-hooks` instala el hook en `prepare` (corre solo con `pnpm install`). Pre-commit: `pnpm check:fast && pnpm --filter @clave/shared test`.
+- **Por qué**: una dependencia sin archivos extra (la config vive en `package.json`); husky agrega una carpeta `.husky/` sin ganancia para un solo hook.
+- **Nota**: el hook se puede saltear con `--no-verify` o `SKIP_SIMPLE_GIT_HOOKS=1`; la regla de hookify bloquea ambos para el agente, y en M8 CI vuelve a correr todo.
