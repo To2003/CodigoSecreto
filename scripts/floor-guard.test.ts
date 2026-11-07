@@ -147,3 +147,37 @@ describe('floor-guard with a main branch', () => {
     expect(res.out).toContain('base: main');
   });
 });
+
+describe('floor-guard --commit-msg', () => {
+  const msgFile = () => join(repo, '.git', 'COMMIT_EDITMSG');
+  const removeAssertion = () => {
+    write('src/a.test.ts', "it('a', () => {\n  expect(a).toBe(1);\n});\n");
+    git('add', '-A');
+  };
+
+  it('accepts a removed assertion when the message gives a reason', () => {
+    removeAssertion();
+    writeFileSync(
+      msgFile(),
+      'fix: x\n\nFloor-Test-Change: the assertion duplicated the one above\n',
+    );
+    const res = guard(['--staged', '--commit-msg', msgFile()]);
+    expect(res.code).toBe(0);
+    expect(res.out).toContain('acknowledged');
+  });
+
+  it('still fails without the trailer, or with an empty reason', () => {
+    removeAssertion();
+    writeFileSync(msgFile(), 'fix: x\n\nFloor-Test-Change: ok\n');
+    const res = guard(['--staged', '--commit-msg', msgFile()]);
+    expect(res.code).toBe(1);
+    expect(res.out).toContain('Floor-Test-Change: <reason>');
+  });
+
+  it('never excuses other findings', () => {
+    write('src/g.ts', '// @ts-ignore\n');
+    git('add', '-A');
+    writeFileSync(msgFile(), 'fix: x\n\nFloor-Test-Change: trying to sneak a suppression in\n');
+    expect(guard(['--staged', '--commit-msg', msgFile()])).toMatchObject({ code: 1 });
+  });
+});

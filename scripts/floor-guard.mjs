@@ -6,11 +6,25 @@
 // Without a main branch: HEAD locally (so the current change is still checked, deletions included);
 // in CI ($CI set) that is an error (exit 2), never a silent "clean". Empty tree only before the first commit.
 // --staged (pre-commit): checks exactly what is being committed (the index), not the working tree.
+// --commit-msg <file> (commit-msg hook): CONSTRAINTS.md allows removing or skipping tests only with a
+// reason in the commit message. A `Floor-Test-Change: <reason>` trailer (10+ chars) turns the
+// test findings (test-deleted, assertion-removed, test-made-easier) into printed notices.
+// Every other finding still fails.
 // Exit codes: 0 clean, 1 floor violation, 2 the guard could not run.
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 
 const staged = process.argv.includes('--staged');
+const commitMsgFile = (() => {
+  const i = process.argv.indexOf('--commit-msg');
+  return i > -1 ? process.argv[i + 1] : null;
+})();
+const TEST_RULES = new Set(['test-deleted', 'assertion-removed', 'test-made-easier']);
+const testChangeReason = (() => {
+  if (!commitMsgFile) return null;
+  const msg = readFileSync(commitMsgFile, 'utf8');
+  return /^Floor-Test-Change:[ \t]*(\S.{9,})$/m.exec(msg)?.[1]?.trim() ?? null;
+})();
 const explicitBase = (() => {
   const i = process.argv.indexOf('--base');
   return i > -1 ? process.argv[i + 1] : process.env.FLOOR_GUARD_BASE || null;
@@ -248,6 +262,15 @@ for (const r of removedRules) {
   if (verdict) flag(verdict, r.file, r.text + '  ->  ' + a.text);
 }
 
+if (testChangeReason) {
+  const acknowledged = findings.filter((f) => TEST_RULES.has(f.rule));
+  if (acknowledged.length > 0) {
+    console.log('floor-guard: test changes acknowledged by Floor-Test-Change: ' + testChangeReason);
+    for (const f of acknowledged) console.log(`  [${f.rule}] ${f.file}: ${f.text}`);
+  }
+  findings.splice(0, findings.length, ...findings.filter((f) => !TEST_RULES.has(f.rule)));
+}
+
 if (findings.length === 0) {
   console.log('floor-guard: clean (base: ' + base + ')');
   process.exit(0);
@@ -262,6 +285,11 @@ if (findings.some((f) => f.rule === 'rule-removed')) {
 if (findings.some((f) => f.rule === 'threshold-removed')) {
   console.error(
     '\nA threshold-removed finding can also mean a number gained or lost its direction words (">= 80%" becoming "80%", or the reverse): compare the two lines before assuming a threshold was deleted.',
+  );
+}
+if (findings.some((f) => TEST_RULES.has(f.rule))) {
+  console.error(
+    '\nRemoving or skipping a test on purpose? Say why in the commit message with a trailer:\n  Floor-Test-Change: <reason>',
   );
 }
 console.error(

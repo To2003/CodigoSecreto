@@ -18,7 +18,7 @@
     "typecheck": "tsc -p . && pnpm -r --if-present typecheck",
     "check:fast": "pnpm typecheck && pnpm lint && pnpm format:check && node scripts/floor-guard.mjs",
     "check:task": "pnpm check:fast && pnpm coverage",
-    "check:full": "pnpm check:task && pnpm build",
+    "check:full": "pnpm check:task && VITE_SERVER_URL=http://localhost:3001 pnpm build",
     "prepare": "simple-git-hooks"
   },
   "devDependencies": {
@@ -38,6 +38,7 @@
     "vitest": "^5.1.0"
   },
   "simple-git-hooks": {
-    "pre-commit": "pnpm typecheck && pnpm lint && pnpm format:check && node scripts/floor-guard.mjs --staged && pnpm --filter @clave/shared test"
+    "pre-commit": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm --filter @clave/shared test",
+    "commit-msg": "node scripts/floor-guard.mjs --staged --commit-msg \"$1\""
   }
 }
