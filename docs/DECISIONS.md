@@ -112,3 +112,10 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Decisión**: el guard corre en el hook `commit-msg` (`--staged --commit-msg "$1"`). Los hallazgos de tests (`test-deleted`, `assertion-removed`, `test-made-easier`) pasan a aviso solo si el mensaje trae `Floor-Test-Change: <motivo>` (10+ caracteres). Todo lo demás sigue bloqueando.
 - **Por qué**: implementa la regla como está escrita y deja el motivo en `git log`, a la vista en review. Sin esto, la única salida era `--no-verify` (bloqueado por hookify) o reescribir el test para engañar al guard.
 - **Descartadas**: una excepción en CONSTRAINTS por cada cambio de test (demasiado ruido); no tener escape.
+
+## ADR-016 — `packages/shared` sigue la estructura literal del SPEC (sin `src/`)
+
+- **Estado**: Aceptada (2026-11-07, cierre de M0)
+- **Contexto**: SPEC §11 define `packages/shared/{engine,schemas,types,words}` y CONSTRAINTS fija la cobertura del 95% sobre `packages/shared/engine`, pero el paquete había arrancado con `src/`. La review de M0 marcó que tsconfig y cobertura no iban a ver el motor.
+- **Decisión**: el paquete no tiene `src/`: `index.ts` en la raíz del paquete (lo que exporta `exports`), y las carpetas del SPEC al lado. `tsconfig` incluye `**/*.ts`; la cobertura mide `packages/*/**/*.ts`. Precisa ADR-009: shared exporta `./index.ts`.
+- **Por qué**: las rutas del SPEC, de CLAUDE.md y de CONSTRAINTS quedan iguales a las reales.
