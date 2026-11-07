@@ -96,3 +96,10 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Decisión**: `simple-git-hooks` instala el hook en `prepare` (corre solo con `pnpm install`). Pre-commit: `pnpm check:fast && pnpm --filter @clave/shared test`.
 - **Por qué**: una dependencia sin archivos extra (la config vive en `package.json`); husky agrega una carpeta `.husky/` sin ganancia para un solo hook.
 - **Nota**: el hook se puede saltear con `--no-verify` o `SKIP_SIMPLE_GIT_HOOKS=1`; la regla de hookify bloquea ambos para el agente, y en M8 CI vuelve a correr todo.
+
+## ADR-014 — Las reglas de hookify se commitean
+
+- **Estado**: Aceptada (2026-11-07, plan M0)
+- **Contexto**: hookify sugiere ignorar `.claude/*.local.md` en git, pero las reglas del KICKOFF §4 son del proyecto, no de una máquina.
+- **Decisión**: `.claude/hookify.*.local.md` va al repo: bloquear saltear el pre-commit, avisar al editar `SPEC.md` y avisar si se emite estado de cartas fuera de `toPublicView`.
+- **Por qué**: así las reglas viajan con el repo y aplican en cualquier sesión de Claude Code (cloud o VS Code). `.claude/settings.local.json` sigue ignorado.

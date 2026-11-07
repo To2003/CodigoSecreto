@@ -9,5 +9,5 @@ coverage/
 playwright-report/
 test-results/
 .DS_Store
-.claude/*.local.md
+# Las reglas de hookify (.claude/hookify.*.local.md) se commitean a propósito (ADR-014)
 .claude/settings.local.json
