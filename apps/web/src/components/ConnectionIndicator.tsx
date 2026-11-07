@@ -5,6 +5,7 @@ const DOT: Record<ConnectionStatus, string> = {
   connecting: 'bg-accent',
   connected: 'bg-blue',
   reconnecting: 'bg-red',
+  disconnected: 'bg-red',
 };
 
 export function ConnectionIndicator() {

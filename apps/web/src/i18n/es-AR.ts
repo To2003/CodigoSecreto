@@ -10,5 +10,6 @@ export const t = {
     connecting: 'Buscando a los agentes…',
     connected: 'Conectado',
     reconnecting: 'Se te cortó. Reconectando…',
+    disconnected: 'Se cortó la conexión. Recargá la página.',
   },
 } as const;
