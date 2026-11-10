@@ -797,3 +797,41 @@ describe('purity', () => {
     expect(s).toEqual(frozen);
   });
 });
+
+describe('SET_SPYMASTER (host reassigns, SPEC §2.4)', () => {
+  it('swaps roles within the team and drops the new spymaster point', () => {
+    let s = clue(start());
+    const team = activeTeam(s);
+    s = ok(s, {
+      type: 'POINT_CARD',
+      playerId: agent2(team),
+      cardId: firstOf(s, 'civilian').id,
+    }).state;
+    const res = ok(s, { type: 'SET_SPYMASTER', team, playerId: agent2(team) });
+    const roles = Object.fromEntries(res.state.players.map((p) => [p.id, p.role]));
+    expect(roles[agent2(team)]).toBe('spymaster');
+    expect(roles[spy(team)]).toBe('agent');
+    expect(res.state.points).toEqual({});
+    expect(res.events).toEqual([{ type: 'SPYMASTER_CHANGED', team, playerId: agent2(team) }]);
+  });
+
+  it('is a no-op for the current spymaster', () => {
+    const s = start();
+    const team = activeTeam(s);
+    expect(ok(s, { type: 'SET_SPYMASTER', team, playerId: spy(team) }).events).toEqual([]);
+  });
+
+  it('checks the player and the phase', () => {
+    const s = start();
+    const team = activeTeam(s);
+    fail(s, { type: 'SET_SPYMASTER', team, playerId: 'ghost' }, 'NOT_A_PLAYER');
+    fail(s, { type: 'SET_SPYMASTER', team, playerId: agent(otherTeam(team)) }, 'WRONG_TEAM');
+    fail(s, { type: 'SET_SPYMASTER', team, playerId: 'spec' }, 'WRONG_TEAM');
+    const over = ok(clue(s), {
+      type: 'REVEAL_CARD',
+      playerId: agent(team),
+      cardId: firstOf(s, 'traitor').id,
+    }).state;
+    fail(over, { type: 'SET_SPYMASTER', team, playerId: agent(team) }, 'WRONG_PHASE');
+  });
+});

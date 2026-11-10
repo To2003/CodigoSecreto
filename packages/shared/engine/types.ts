@@ -85,7 +85,9 @@ export type Action =
   | { type: 'TIMER_EXPIRED' }
   /** System action: only the server's presence tracking creates it. */
   | { type: 'SET_CONNECTED'; playerId: string; connected: boolean }
-  | { type: 'REMATCH'; keepSpymasters: boolean };
+  | { type: 'REMATCH'; keepSpymasters: boolean }
+  /** Host action (server checks it): a new spymaster for a team, e.g. when theirs dropped. */
+  | { type: 'SET_SPYMASTER'; team: Team; playerId: string };
 
 export type TurnEndReason =
   'civilian' | 'rival' | 'guesses_used' | 'ended' | 'timeout' | 'objection';
@@ -99,7 +101,8 @@ export type GameEvent =
   | { type: 'OBJECTION_OPENED'; objector: string }
   | { type: 'OBJECTION_VOTED'; playerId: string; accept: boolean }
   | { type: 'OBJECTION_RESOLVED'; accepted: boolean }
-  | { type: 'GAME_OVER'; winner: Team; reason: GameOverReason };
+  | { type: 'GAME_OVER'; winner: Team; reason: GameOverReason }
+  | { type: 'SPYMASTER_CHANGED'; team: Team; playerId: string };
 
 export type EngineErrorCode =
   | 'GAME_IN_PROGRESS'
@@ -109,6 +112,7 @@ export type EngineErrorCode =
   | 'NOT_ENOUGH_WORDS'
   | 'WRONG_PHASE'
   | 'NOT_A_PLAYER'
+  | 'WRONG_TEAM'
   | 'NOT_YOUR_TURN'
   | 'WRONG_ROLE'
   | 'INVALID_CLUE'

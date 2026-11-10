@@ -88,6 +88,8 @@ class Turn {
         return this.object(action.playerId);
       case 'VOTE_OBJECTION':
         return this.vote(action.playerId, action.accept);
+      case 'SET_SPYMASTER':
+        return this.setSpymaster(action.team, action.playerId);
     }
   }
 
@@ -171,6 +173,23 @@ class Turn {
   }
 
   // ── actions ──────────────────────────────────────────────────────────────
+
+  private setSpymaster(team: Team, playerId: string): EngineError | undefined {
+    if (this.s.phase.name === 'over') return { code: 'WRONG_PHASE' };
+    const next = this.player(playerId);
+    if (!next) return { code: 'NOT_A_PLAYER' };
+    if (next.team !== team) return { code: 'WRONG_TEAM' };
+    if (next.role === 'spymaster') return;
+    for (const p of this.s.players) {
+      if (p.team === team && p.role === 'spymaster') p.role = 'agent';
+    }
+    next.role = 'spymaster';
+    this.s.points = Object.fromEntries(
+      Object.entries(this.s.points).filter(([agentId]) => agentId !== playerId),
+    );
+    this.events.push({ type: 'SPYMASTER_CHANGED', team, playerId });
+    return;
+  }
 
   private timerExpired(): EngineError | undefined {
     switch (this.s.phase.name) {
