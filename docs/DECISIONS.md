@@ -119,3 +119,11 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Contexto**: SPEC §11 define `packages/shared/{engine,schemas,types,words}` y CONSTRAINTS fija la cobertura del 95% sobre `packages/shared/engine`, pero el paquete había arrancado con `src/`. La review de M0 marcó que tsconfig y cobertura no iban a ver el motor.
 - **Decisión**: el paquete no tiene `src/`: `index.ts` en la raíz del paquete (lo que exporta `exports`), y las carpetas del SPEC al lado. `tsconfig` incluye `**/*.ts`; la cobertura mide `packages/*/**/*.ts`. Precisa ADR-009: shared exporta `./index.ts`.
 - **Por qué**: las rutas del SPEC, de CLAUDE.md y de CONSTRAINTS quedan iguales a las reales.
+
+## ADR-017 — Modo autónomo desde M1
+
+- **Estado**: Aceptada (2026-11-10, instrucción de @To2003)
+- **Decisión**: el agente encadena hitos sin esperar OK. Cada plan se guarda en `docs/plans/M{n}.md` y se ejecuta enseguida. Las ambigüedades del SPEC se resuelven con la opción más conservadora y alineada al SPEC, anotada acá. Lo que no se puede verificar en el contenedor va a `docs/MANUAL-CHECKS.md`; los bloqueos a `docs/BLOCKERS.md`; el estado a `docs/PROGRESS.md` en cada cierre. Review con `code-reviewer` antes de cerrar M3, M4, M5, M7 y M8.
+- **Cooperativo**: va en M9 (SPEC §12 manda sobre las menciones a M8 en §1.2 y §1.7).
+- **Assets**: sin descargas; sonido generado con Web Audio (M6) y arte SVG en código.
+- **Deploy (M8)**: se deja todo listo y documentado en `docs/DEPLOY.md`, sin crear cuentas ni deployar.
