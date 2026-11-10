@@ -1,4 +1,12 @@
-import type { AvatarColor, ErrorCode, StartBlocker, Team } from '@clave/shared';
+import type {
+  AvatarColor,
+  CardType,
+  ClueCount,
+  ClueRejection,
+  ErrorCode,
+  StartBlocker,
+  Team,
+} from '@clave/shared';
 
 /**
  * Todo el copy visible de la UI (SPEC §3.5): castellano rioplatense, con voseo.
@@ -93,6 +101,83 @@ export const t = {
           return 'El modo cooperativo todavía no está disponible.';
       }
     },
+  },
+  game: {
+    remaining: (n: number) => (n === 1 ? '1 restante' : `${n} restantes`),
+    turnOf: (team: string) => `Turno del ${team}`,
+    paused: 'En pausa',
+    clueLine: (word: string, c: ClueCount) => `${word} · ${c === 'inf' ? '∞' : String(c)}`,
+    count: (c: ClueCount) => (c === 'inf' ? '∞' : String(c)),
+    yourTurnSpymaster: 'Te toca, jefe. Pensá una pista que conecte tus palabras.',
+    clueLabel: 'Tu pista',
+    cluePlaceholder: 'Una sola palabra',
+    countLabel: 'Cuántas palabras',
+    sendClue: 'Mandar pista',
+    yourTurnAgents: (clue: string) => `Tu jefe dijo ${clue}. ¿Cuáles son?`,
+    guessesLeft: (n: number | null) =>
+      n === null
+        ? 'Intentos sin límite'
+        : n === 1
+          ? 'Te queda 1 intento'
+          : `Te quedan ${n} intentos`,
+    endTurn: 'Pasar turno',
+    endTurnDisabled: 'Primero tienen que dar vuelta al menos una carta.',
+    majorityHint: 'Se da vuelta cuando la mayoría del equipo señala la misma carta.',
+    pointHint: 'Tocá una carta para señalarla; el ✓ la da vuelta.',
+    waitingClue: (spymaster: string) => `Esperando a que ${spymaster} piense una pista…`,
+    waitingRival: (team: string) => `El ${team} está pensando… paciencia, che.`,
+    rivalGuessing: (team: string, clue: string) => `El ${team} está adivinando con ${clue}.`,
+    spymasterWatching: (clue: string) => `Tus agentes están con ${clue}. Vos, cara de póker.`,
+    reveal: (word: string) => `Dar vuelta ${word}`,
+    revealIcon: '✓',
+    point: (word: string) => `Señalar ${word}`,
+    unpoint: (word: string) => `Dejar de señalar ${word}`,
+    pointedBy: (names: string[]) => `Señalada por ${names.join(', ')}`,
+    viewAsAgent: 'Ver como agente',
+    cardType: {
+      red: 'agente rojo',
+      blue: 'agente azul',
+      civilian: 'civil',
+      traitor: 'traidor',
+    } satisfies Record<CardType, string>,
+    cardLabel: (word: string, type: string | null, revealed: boolean) =>
+      [word, type, revealed ? 'dada vuelta' : null].filter(Boolean).join(', '),
+    clueInvalid: {
+      EMPTY: 'Escribí una pista.',
+      MULTIPLE_WORDS: 'Tiene que ser una sola palabra.',
+      TOO_LONG: 'Máximo 24 letras.',
+      HYPHEN_NOT_ALLOWED: 'En esta sala no van palabras compuestas.',
+      NOT_LETTERS: 'Solo letras, sin números ni símbolos.',
+      ON_BOARD: 'No vale, esa palabra está en el tablero.',
+      CONTAINS_BOARD_WORD: 'No vale, contiene una palabra del tablero.',
+      CONTAINED_IN_BOARD_WORD: 'No vale, está adentro de una palabra del tablero.',
+    } satisfies Record<ClueRejection, string>,
+    clueConflict: (word: string) => `(choca con ${word})`,
+    turnEnded: {
+      civilian: 'Era un civil. Se terminó el turno.',
+      rival: (team: string) => `¡Uh! Le regalaron un agente al ${team}.`,
+      guesses_used: 'Se acabaron los intentos.',
+      ended: 'Pasaron el turno.',
+      timeout: 'Se acabó el tiempo.',
+      objection: 'Se aceptó la objeción.',
+    },
+    history: 'Historial de pistas',
+    noClues: 'Todavía no hay pistas.',
+    guessRight: '✓',
+    guessWrong: (type: string) => `✗ (${type})`,
+    pausedWaiting: (name: string) => `Esperando a ${name}…`,
+    pausedHint: 'La partida sigue cuando vuelva, o cuando el host elija otro jefe.',
+    reassignLabel: 'Nuevo jefe',
+    reassign: 'Hacer jefe',
+    win: (team: string) => `¡Misión cumplida! Ganó el ${team}.`,
+    traitorLoss: 'Tocaste al traidor. Partida perdida, boludo.',
+    traitorOther: (team: string) => `El ${team} tocó al traidor.`,
+    scoreboard: (red: number, blue: number) => `Marcador de la sala: Rojo ${red} · Azul ${blue}`,
+    rematch: 'Revancha (rotan los jefes)',
+    rematchKeep: 'Revancha con los mismos jefes',
+    backToLobby: 'Volver al lobby',
+    waitingHostEnd: 'El host decide si hay revancha.',
+    players: 'Jugadores',
   },
   settings: {
     title: 'Configuración',

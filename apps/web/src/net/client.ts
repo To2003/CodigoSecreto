@@ -1,6 +1,8 @@
 import type {
   Ack,
   ClientEventName,
+  ClueCount,
+  ErrorPayload,
   ClientPayload,
   ErrorCode,
   Profile,
@@ -13,7 +15,7 @@ import { socket } from './socket';
 const ACK_TIMEOUT_MS = 8_000;
 
 export type Result<T extends object = object> =
-  ({ ok: true } & T) | { ok: false; code: ErrorCode | 'TIMEOUT' };
+  ({ ok: true } & T) | { ok: false; code: ErrorCode | 'TIMEOUT'; clue?: ErrorPayload['clue'] };
 
 /** Emits with an ack and a timeout, so a sleeping server never leaves a button hanging. */
 async function request<E extends ClientEventName>(
@@ -28,7 +30,10 @@ async function request<E extends ClientEventName>(
       data: ClientPayload<E>,
     ) => Promise<Ack<Record<string, unknown>>>;
     const res = await emit(event, payload);
-    return res.ok ? res : { ok: false, code: res.error.code };
+    if (res.ok) return res;
+    return res.error.clue
+      ? { ok: false, code: res.error.code, clue: res.error.clue }
+      : { ok: false, code: res.error.code };
   } catch {
     return { ok: false, code: 'TIMEOUT' };
   }
@@ -82,6 +87,15 @@ export const randomizeTeams = () => request('lobby:randomize', {});
 export const updateSettings = (settings: SettingsPatch) =>
   request('lobby:updateSettings', { settings });
 export const kickPlayer = (playerId: string) => request('lobby:kick', { playerId });
+
+export const startGame = () => request('game:start', {});
+export const giveClue = (word: string, count: ClueCount) => request('game:clue', { word, count });
+export const pointCard = (cardId: string | null) => request('game:point', { cardId });
+export const revealCard = (cardId: string) => request('game:reveal', { cardId });
+export const endGuessing = () => request('game:endGuessing', {});
+export const rematch = (keepSpymasters: boolean) => request('game:rematch', { keepSpymasters });
+export const backToLobby = () => request('game:backToLobby', {});
+export const reassignSpymaster = (playerId: string) => request('game:setSpymaster', { playerId });
 
 /** Re-sends room:join with the stored seat: answers with a full room:state. */
 function resync() {

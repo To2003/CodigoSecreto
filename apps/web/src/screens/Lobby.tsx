@@ -11,6 +11,7 @@ import {
   randomizeTeams,
   setRole,
   setTeam,
+  startGame,
   type Result,
 } from '../net/client';
 
@@ -242,8 +243,11 @@ export function Lobby({ view }: { view: RoomView }) {
             <>
               <button
                 type="button"
-                disabled
+                disabled={view.startBlockers.length > 0}
                 aria-describedby="start-blockers"
+                onClick={() => {
+                  act(startGame());
+                }}
                 className="rounded-md bg-accent px-4 py-2 font-semibold text-ink disabled:opacity-50"
               >
                 {t.lobby.start}

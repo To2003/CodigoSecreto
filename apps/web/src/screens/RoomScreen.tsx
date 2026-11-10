@@ -5,6 +5,7 @@ import { navigate } from '../lib/router';
 import { loadProfile, loadSeat } from '../lib/storage';
 import { joinRoom } from '../net/client';
 import { useRoom } from '../store/room';
+import { Game } from './Game';
 import { Lobby } from './Lobby';
 
 /**
@@ -31,7 +32,7 @@ export function RoomScreen({ code }: { code: string }) {
     });
   }, [code, view]);
 
-  if (view) return <Lobby view={view} />;
+  if (view) return view.game ? <Game view={view} /> : <Lobby view={view} />;
 
   if (exit === 'kicked' || exit === 'ROOM_NOT_FOUND') {
     return (
