@@ -222,6 +222,10 @@ describe('anti-leak (SPEC §2.1)', () => {
     const beto2 = await join('Beto', code, { playerId: beto.id, token: beto.token });
     await settle();
     expect(beto2.view()?.game?.seesMap).toBe(false);
+    // Benched, but he saw the map: still no chat for him until the game ends (M7 review).
+    const benched = await beto2.socket.emitWithAck('chat:send', { text: 'pista', scope: 'all' });
+    expect(benched).toMatchObject({ ok: false, error: { code: 'CHAT_NOT_ALLOWED' } });
+    expect(beto2.view()?.chatMuted).toBe(true);
 
     // Play to the end, then a rematch and one more turn.
     const spymasterOf = (team: Team) =>

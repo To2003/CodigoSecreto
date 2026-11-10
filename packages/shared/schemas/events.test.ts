@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clientEvents, roomCodeSchema, sanitizeNickname } from './events';
+import { clientEvents, roomCodeSchema, sanitizeChat, sanitizeNickname } from './events';
 
 describe('roomCodeSchema', () => {
   it('accepts 4 unambiguous letters, case-insensitive', () => {
@@ -90,5 +90,24 @@ describe('game events', () => {
   it('game:point accepts null to clear; game:rematch defaults keepSpymasters', () => {
     expect(clientEvents['game:point'].parse({ cardId: null })).toEqual({ cardId: null });
     expect(clientEvents['game:rematch'].parse({})).toEqual({ keepSpymasters: false });
+  });
+});
+
+describe('sanitizeChat', () => {
+  it('drops control and invisible characters, collapses spaces, caps at 200', () => {
+    expect(sanitizeChat('  hola\u0000   che\u200b ')).toBe('hola che');
+    expect(sanitizeChat('a'.repeat(300))).toHaveLength(200);
+  });
+
+  it('keeps joined emoji whole (the zero-width joiner stays)', () => {
+    const family = '👨\u200d👩\u200d👧';
+    expect(sanitizeChat(`hola ${family}`)).toBe(`hola ${family}`);
+    expect(sanitizeChat('❤\ufe0f')).toBe('❤\ufe0f');
+  });
+
+  it('caps stacked combining marks ("zalgo") at 3 per letter', () => {
+    const zalgo = `a${'\u0301'.repeat(50)}b`;
+    expect(sanitizeChat(zalgo)).toBe(`a${'\u0301'.repeat(3)}b`);
+    expect(sanitizeChat('canción')).toBe('canción');
   });
 });

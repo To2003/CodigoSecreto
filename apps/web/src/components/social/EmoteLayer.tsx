@@ -21,7 +21,7 @@ export function EmoteLayer({ view }: { view: RoomView }) {
         return (
           <div
             key={e.key}
-            className="anim-emote anim-move flex items-center gap-1.5 rounded-full bg-surface/90 py-1 pr-3 pl-1 shadow-lg"
+            className="anim-emote flex items-center gap-1.5 rounded-full bg-surface/90 py-1 pr-3 pl-1 opacity-0 shadow-lg"
           >
             <Avatar avatar={player.avatar} color={player.color} size={28} />
             <span className="text-sm">

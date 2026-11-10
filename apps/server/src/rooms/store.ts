@@ -37,12 +37,19 @@ export class RoomStore {
     this.rooms.delete(code);
   }
 
-  /** Runs out due timers (SPEC §1.7). Returns the rooms that need a broadcast. */
-  tick(): { room: Room; events: RoomEvent[] }[] {
+  /**
+   * Runs out due timers (SPEC §1.7). Returns the rooms that need a broadcast. A room that throws
+   * is reported and skipped, so it can't stop the timers of every room after it.
+   */
+  tick(onError: (room: Room, err: unknown) => void): { room: Room; events: RoomEvent[] }[] {
     const changed: { room: Room; events: RoomEvent[] }[] = [];
     for (const room of this.rooms.values()) {
-      const events = room.tick();
-      if (events.length > 0) changed.push({ room, events });
+      try {
+        const events = room.tick();
+        if (events.length > 0) changed.push({ room, events });
+      } catch (err) {
+        onError(room, err);
+      }
     }
     return changed;
   }

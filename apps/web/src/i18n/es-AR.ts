@@ -352,6 +352,69 @@ export const t = {
     chipDismiss: 'Ocultar',
     landingLink: 'Tutorial (2 min)',
     rulesLink: 'Reglas',
+    /**
+     * The scripted game: board, clue and target words. They live here with the copy that names
+     * them, so the two can't drift apart.
+     */
+    script: {
+      board: [
+        ['RELOJ', 'red'],
+        ['LUNA', 'blue'],
+        ['MESA', 'civilian'],
+        ['OLA', 'red'],
+        ['FUEGO', 'blue'],
+        ['CINE', 'civilian'],
+        ['PERRO', 'blue'],
+        ['NIEVE', 'red'],
+        ['TIBURÓN', 'traitor'],
+        ['GUITARRA', 'red'],
+        ['NUBE', 'civilian'],
+        ['CASTILLO', 'blue'],
+        ['PEZ', 'red'],
+        ['BANCO', 'blue'],
+        ['ÁRBOL', 'civilian'],
+        ['LÁPIZ', 'red'],
+        ['LLAVE', 'blue'],
+        ['HIELO', 'red'],
+        ['PUENTE', 'civilian'],
+        ['PIANO', 'blue'],
+        ['CAMPO', 'red'],
+        ['BOTÓN', 'civilian'],
+        ['ROSA', 'blue'],
+        ['TREN', 'red'],
+        ['SILLA', 'civilian'],
+      ] satisfies [string, CardType][],
+      seaClue: 'MAR',
+      sea: ['OLA', 'PEZ'],
+      civilian: 'NUBE',
+      traitor: 'TIBURÓN',
+      targets: ['NIEVE', 'HIELO'] as const,
+      /** Clues the bot agent "gets" for the targets; compared without accents. */
+      goodClues: [
+        'FRIO',
+        'INVIERNO',
+        'POLAR',
+        'CONGELADO',
+        'CONGELAR',
+        'HELADO',
+        'HELADA',
+        'ESCARCHA',
+        'GLACIAR',
+        'ANTARTIDA',
+        'ARTICO',
+        'INVERNAL',
+        'PINGUINO',
+        'ESQUIMAL',
+        'IGLU',
+        'HELADERA',
+        'FREEZER',
+        'GELIDO',
+        'BLANCO',
+        'AGUA',
+        'TEMPERATURA',
+        'FRESCO',
+      ],
+    },
     steps: {
       board:
         'Este es el tablero: 25 palabras. Hay dos equipos, Rojo y Azul, y cada uno busca a sus agentes escondidos acá.',
@@ -366,17 +429,22 @@ export const t = {
       civilian:
         'Esta es un civil. Si tocás un civil, se termina el turno de tu equipo (y no suma para nadie).',
       traitor: 'Y este es el traidor. Es la carta que nunca tenés que tocar: perdés en el acto.',
-      spymaster:
-        'Ahora sos jefe. Ves el mapa clave: las cartas tienen color. Dá una pista que conecte NIEVE y HIELO.',
-      clueLabel: 'Tu pista para NIEVE y HIELO',
-      cluePlaceholder: 'Por ejemplo, FRÍO',
+      spymaster: (a: string, b: string) =>
+        `Ahora sos jefe. Ves el mapa clave: las cartas tienen color. Da una pista que conecte ${a} y ${b}.`,
+      clueLabel: (a: string, b: string) => `Tu pista para ${a} y ${b}`,
+      cluePlaceholder: 'Una sola palabra',
       send: 'Mandar pista',
-      spymasterDone: (clue: string) =>
-        `Con ${clue}, tus agentes encontraron NIEVE y HIELO. ¡Gran pista!`,
+      sendAnyway: 'Mandarla igual',
+      spymasterUnsure: (clue: string, a: string, b: string) =>
+        `Con ${clue}, tus agentes se miran sin entender. ¿Qué tienen en común ${a} y ${b}? Probá con otra, o mandala igual.`,
+      spymasterDone: (clue: string, a: string, b: string) =>
+        `Con ${clue}, tus agentes encontraron ${a} y ${b}. ¡Gran pista!`,
+      spymasterLucky: (clue: string, a: string, b: string) =>
+        `Con ${clue}, tus agentes se la jugaron y encontraron ${a} y ${b}. En una partida de verdad, capaz no tenían tanta suerte.`,
       rules:
         'Pistas: una sola palabra, solo letras. No vale una palabra del tablero, ni algo que la contenga o esté adentro (con SOL en el tablero, GIRASOL no va). Tampoco rimas, letras ni posiciones. Si te pasás, el jefe rival puede objetar.',
       rulesOk: 'Valen: FRÍO, INVIERNO, POLAR.',
-      rulesBad: 'No valen: NIEVES (está en el tablero), DOS PALABRAS, H3LADO.',
+      rulesBad: 'No valen: TRENES (TREN sigue en el tablero), DOS PALABRAS, H3LADO.',
       done: '¡Listo! Ya podés armar una sala y jugar con tus amigos.',
       finish: 'Ir a armar una sala',
     },

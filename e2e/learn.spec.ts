@@ -44,6 +44,11 @@ test('the tutorial goes through all 8 steps on the real rules engine', async ({ 
   await clue.fill('nieves');
   await expect(step).toContainText('esa palabra está en el tablero');
   await expect(page.getByRole('button', { name: 'Mandar pista' })).toBeDisabled();
+  // A valid clue the bot doesn't get: a hint first, and the option to send it anyway.
+  await clue.fill('auto');
+  await page.getByRole('button', { name: 'Mandar pista' }).click();
+  await expect(step).toContainText('tus agentes se miran sin entender');
+  await expect(page.getByRole('button', { name: 'Mandarla igual' })).toBeVisible();
   await clue.fill('frío');
   await page.getByRole('button', { name: 'Mandar pista' }).click();
   await expect(step).toContainText('Con FRÍO · 2, tus agentes encontraron NIEVE y HIELO');

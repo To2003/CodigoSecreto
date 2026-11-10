@@ -1,5 +1,5 @@
 import type { RoomView } from '@clave/shared';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { t } from '../../i18n/es-AR';
 import { objectClue, voteObjection } from '../../net/client';
 import { useRoom } from '../../store/room';
@@ -14,6 +14,7 @@ const errorText = (code: keyof typeof t.errors) => t.errors[code];
  */
 export function ObjectButton({ view }: { view: RoomView }) {
   const [error, setError] = useState<string | null>(null);
+  const helpId = useId();
   const game = view.game;
   const me = view.players.find((p) => p.id === view.youId);
   const phase = game?.phase;
@@ -32,7 +33,7 @@ export function ObjectButton({ view }: { view: RoomView }) {
       <Tip id="objection" text={t.tips.objection} />
       <button
         type="button"
-        aria-describedby="object-help"
+        aria-describedby={helpId}
         onClick={() => {
           void objectClue().then((res) => {
             setError(res.ok ? null : errorText(res.code));
@@ -42,7 +43,7 @@ export function ObjectButton({ view }: { view: RoomView }) {
       >
         {t.game.object}
       </button>
-      <p id="object-help" className="text-sm text-paper/70">
+      <p id={helpId} className="text-sm text-paper/70">
         {t.game.objectHelp}
       </p>
       {error && (
@@ -58,6 +59,7 @@ export function ObjectButton({ view }: { view: RoomView }) {
 export function ObjectionPanel({ view }: { view: RoomView }) {
   const seq = useRoom((s) => s.seq);
   const [error, setError] = useState<string | null>(null);
+  const titleId = useId();
   const game = view.game;
   const phase = game?.phase;
   if (!game || phase?.name !== 'objection') return null;
@@ -75,14 +77,14 @@ export function ObjectionPanel({ view }: { view: RoomView }) {
 
   return (
     <section
-      aria-labelledby="objection-title"
+      aria-labelledby={titleId}
       className="flex flex-col gap-2 rounded-lg border border-red-soft/60 p-3"
       data-testid="objection"
     >
       <div className="flex items-center gap-3">
         {game.timer?.kind === 'objection' && <TimerRing key={seq} timer={game.timer} />}
         <div>
-          <p id="objection-title" className="font-semibold">
+          <p id={titleId} className="font-semibold">
             {t.game.objectionTitle(objector, clue ? t.game.clueLine(clue.word, clue.count) : '')}
           </p>
           <p className="text-sm text-paper/80" aria-live="polite">

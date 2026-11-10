@@ -81,6 +81,28 @@ describe('chat', () => {
     expect(code(() => room.sendChat('p5', 'jaja', 'all'))).toBe('CHAT_NOT_ALLOWED');
   });
 
+  it('a spymaster replaced during a pause stays muted: they saw the map (M7 review)', () => {
+    // One more agent per team, so either team can lose its spymaster and keep an agent.
+    room.join(profile('Fede'), 0, { id: 'p6', token: `token-6-${'x'.repeat(20)}` });
+    room.join(profile('Gabi'), 0, { id: 'p7', token: `token-7-${'x'.repeat(20)}` });
+    room.setTeam('p6', 'red');
+    room.setTeam('p7', 'blue');
+    room.start('p1', mulberry32(1));
+    const phase = room.game?.phase;
+    if (!phase || phase.name === 'over') throw new Error('setup');
+    const [sm, agent] = phase.team === 'red' ? ['p1', 'p6'] : ['p2', 'p7'];
+    room.setConnected(sm, false, 0);
+    room.setSpymaster('p1', agent); // p1 is the host
+    room.setConnected(sm, true, 0);
+    // The old spymaster is a spectator now, in a room where spectators don't see the map.
+    expect(room.view(sm).players.find((p) => p.id === sm)?.team).toBe('spectator');
+    expect(code(() => room.sendChat(sm, 'TIBURON es el traidor', 'all'))).toBe('CHAT_NOT_ALLOWED');
+    expect(room.view(sm).chatMuted).toBe(true);
+    // The new spymaster is muted too; a plain agent isn't.
+    expect(code(() => room.sendChat(agent, 'ahora soy jefe', 'all'))).toBe('CHAT_NOT_ALLOWED');
+    expect(room.view('p3').chatMuted).toBe(false);
+  });
+
   it('history only has what each player could read, at most the last 50', () => {
     for (let i = 0; i < CHAT_HISTORY + 5; i++) {
       room.sendChat(i % 2 === 0 ? 'p3' : 'p4', `msg ${String(i)}`, i % 3 === 0 ? 'team' : 'all');

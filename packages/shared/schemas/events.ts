@@ -43,7 +43,10 @@ export const MAX_CHAT_LENGTH = 200;
  */
 export function sanitizeChat(raw: string): string {
   const cleaned = raw
-    .replace(/[\p{Cc}\p{Cf}]/gu, ' ')
+    // Invisible formatting goes, except the zero-width joiner that glues emoji like 👨‍👩‍👧.
+    .replace(/(?!\u200d)[\p{Cc}\p{Cf}]/gu, ' ')
+    // At most 3 combining marks in a row: enough for any language, not for "zalgo" towers.
+    .replace(/(\p{M}{3})\p{M}+/gu, '$1')
     .replace(/\s+/gu, ' ')
     .trim();
   return Array.from(cleaned).slice(0, MAX_CHAT_LENGTH).join('').trim();

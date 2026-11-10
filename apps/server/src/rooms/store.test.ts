@@ -61,3 +61,23 @@ describe('RoomStore', () => {
     ]);
   });
 });
+
+describe('tick', () => {
+  it('one broken room does not stop the timers of the others', () => {
+    const store = new RoomStore(undefined, () => 0);
+    const broken = store.create(0);
+    const fine = store.create(0);
+    broken.tick = () => {
+      throw new Error('boom');
+    };
+    let ticked = false;
+    fine.tick = () => {
+      ticked = true;
+      return [];
+    };
+    const errors: string[] = [];
+    store.tick((room) => errors.push(room.code));
+    expect(errors).toEqual([broken.code]);
+    expect(ticked).toBe(true);
+  });
+});

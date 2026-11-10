@@ -34,7 +34,13 @@ export interface ClaveServer {
   close(): Promise<void>;
 }
 
-export function createServer({ clientOrigins, log, now = Date.now }: ServerOptions): ClaveServer {
+/**
+ * Epoch milliseconds that never jump: a wall clock adjusted by NTP would stretch or shorten the
+ * game timers (M7 review). Tests inject their own clock.
+ */
+const steadyNow = () => performance.timeOrigin + performance.now();
+
+export function createServer({ clientOrigins, log, now = steadyNow }: ServerOptions): ClaveServer {
   const isAllowed = (origin: string | undefined) =>
     origin !== undefined && clientOrigins.includes(origin);
 
@@ -86,15 +92,12 @@ export function createServer({ clientOrigins, log, now = Date.now }: ServerOptio
   const sweeper = setInterval(sweep, SWEEP_INTERVAL_MS);
   sweeper.unref();
   const tick = () => {
-    for (const { room, events } of store.tick()) broadcast(io, room, events);
+    const due = store.tick((room, err) => {
+      log.error('timer tick failed', { roomCode: room.code, err });
+    });
+    for (const { room, events } of due) broadcast(io, room, events);
   };
-  const ticker = setInterval(() => {
-    try {
-      tick();
-    } catch (err) {
-      log.error('timer tick failed', { err });
-    }
-  }, TICK_INTERVAL_MS);
+  const ticker = setInterval(tick, TICK_INTERVAL_MS);
   ticker.unref();
 
   return {

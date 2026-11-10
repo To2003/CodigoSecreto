@@ -27,6 +27,7 @@ function view(youId: string, phase?: GameView['phase']): RoomView {
     status: phase ? 'playing' : 'lobby',
     scoreboard: { red: 0, blue: 0 },
     startBlockers: [],
+    chatMuted: false,
     game: phase
       ? {
           phase,

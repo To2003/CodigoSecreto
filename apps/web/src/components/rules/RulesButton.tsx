@@ -14,15 +14,15 @@ export function RulesButton({ className = '' }: { className?: string }) {
     <>
       <button
         type="button"
-        aria-label={t.rules.open}
-        title={t.rules.open}
         className={`rounded-md border border-line font-bold ${className}`}
         onClick={() => {
           setOpen(true);
           ref.current?.showModal();
         }}
       >
-        {t.rules.openShort}
+        {/* The name is the word ("Reglas"); phones show just the "?" next to it. */}
+        <span aria-hidden="true">{t.rules.openShort}</span>
+        <span className="sr-only sm:not-sr-only sm:ml-1 sm:font-normal">{t.rules.open}</span>
       </button>
       <dialog
         ref={ref}

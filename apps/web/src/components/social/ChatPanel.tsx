@@ -6,14 +6,6 @@ import { useSocial } from '../../store/social';
 
 const SCOPES = ['all', 'team'] as const;
 
-/** Who may write right now (SPEC §9): mirrors the server rule so the UI explains instead of failing. */
-function mutedNow(view: RoomView): boolean {
-  const me = view.players.find((p) => p.id === view.youId);
-  if (view.status !== 'playing' || !me) return false;
-  if (me.team === 'spectator') return view.settings.spectatorsSeeMap && view.game?.seesMap === true;
-  return me.role === 'spymaster';
-}
-
 export function EmoteBar() {
   const [error, setError] = useState<string | null>(null);
   return (
@@ -59,13 +51,17 @@ export function ChatPanel({ view, className = '' }: { view: RoomView; className?
   const name = (id: string) =>
     id === view.youId ? t.social.you : (view.players.find((p) => p.id === id)?.nickname ?? '');
   const disabled = !view.settings.chat;
-  const muted = mutedNow(view);
+  // The server decides (it knows who has seen the map, benched spymasters included).
+  const muted = view.chatMuted;
+  // Spectators have no team: their radio is hidden and their lines go to everyone.
+  const sendScope = me?.team === 'spectator' ? 'all' : scope;
+  const lastId = messages.at(-1)?.id;
 
-  // Keep the newest line in view.
+  // Keep the newest line in view. By id, not length: the list is capped at 50 lines.
   useEffect(() => {
     const log = logRef.current;
     if (log) log.scrollTop = log.scrollHeight;
-  }, [messages.length]);
+  }, [lastId]);
 
   return (
     <section
@@ -99,7 +95,7 @@ export function ChatPanel({ view, className = '' }: { view: RoomView; className?
           onSubmit={(e) => {
             e.preventDefault();
             if (text.trim() === '') return;
-            void sendChat(text, scope).then((res) => {
+            void sendChat(text, sendScope).then((res) => {
               if (res.ok) {
                 setText('');
                 setError(null);

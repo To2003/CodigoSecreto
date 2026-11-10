@@ -21,8 +21,8 @@ export const useSocial = create<SocialState>()(() => ({
 
 /** Lines kept on the client, same as the server's history. */
 const KEEP = 50;
-/** How long an emote floats before it's removed (its animation lasts a bit less). */
-export const EMOTE_MS = 2_400;
+/** How long an emote stays mounted: its animation's length (it rests invisible at the end). */
+export const EMOTE_MS = 2_200;
 
 let emoteKey = 0;
 

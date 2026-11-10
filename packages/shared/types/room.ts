@@ -36,6 +36,8 @@ export interface RoomView {
   status: RoomStatus;
   scoreboard: Record<Team, number>;
   startBlockers: StartBlocker[];
+  /** True while this player may not write in the chat: they saw the key map (SPEC §9). */
+  chatMuted: boolean;
   /** Present from the start of a game until the room goes back to the lobby. */
   game: GameView | null;
 }

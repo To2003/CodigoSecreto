@@ -6,15 +6,10 @@ import { pointCard, revealCard } from '../../net/client';
 import { useReducedMotion } from '../../store/prefs';
 import { useRoom } from '../../store/room';
 import { useSocial } from '../../store/social';
+import { REVEALED_BG } from '../../art/cardStyles';
 import { Avatar } from '../Avatar';
 import { FitText } from './FitText';
 
-export const REVEALED_BG: Record<CardType, string> = {
-  red: 'bg-red pattern-red',
-  blue: 'bg-blue pattern-blue',
-  civilian: 'bg-civil',
-  traitor: 'bg-traitor',
-};
 /** Spymaster's key map: a colored band and a light tint keep the word readable (SPEC §3.2). */
 const KEY_BAND: Record<CardType, string> = {
   red: 'bg-red pattern-red',

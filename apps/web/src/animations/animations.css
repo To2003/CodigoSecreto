@@ -332,6 +332,20 @@
 .anim-emote {
   animation: emote-float 2200ms var(--ease-out) both;
 }
+/* Not an .anim-move (it must never rest visible): its own reduced version, a fade in and out. */
+@keyframes emote-fade {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  10%,
+  85% {
+    opacity: 1;
+  }
+}
+:root[data-motion='reduce'] .anim-emote {
+  animation-name: emote-fade;
+}
 
 /* Game over: the rest of the key map shows up in a cascade. */
 .anim-map-in {

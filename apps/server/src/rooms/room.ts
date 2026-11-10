@@ -133,6 +133,12 @@ export class Room {
   private chatSeq = 0;
   private readonly lastChat = new Map<string, number>();
   private readonly lastEmote = new Map<string, number>();
+  /**
+   * Everyone who has seen this game's key map: its spymasters, any spymaster named during it,
+   * and spectators when the room shows them the map. Muted in chat until the game ends, even
+   * after being benched (M7 review: a replaced spymaster could otherwise type the map).
+   */
+  private mapSeers = new Set<string>();
 
   /**
    * `clock` drives the game timers and chat limits; the store passes the server clock. By default
@@ -218,6 +224,8 @@ export class Room {
 
   private remove(playerId: string, event: RoomEvent): RoomEvent[] {
     this.players = this.players.filter((p) => p.id !== playerId);
+    this.lastChat.delete(playerId);
+    this.lastEmote.delete(playerId);
     const events = [event];
     if (playerId === this.hostId) {
       const next = this.players.find((p) => p.connected) ?? this.players[0];
@@ -342,10 +350,18 @@ export class Room {
     }
     for (const e of res.events) {
       if (e.type === 'GAME_STARTED') {
+        this.mapSeers = new Set(
+          res.state.players
+            .filter((p) =>
+              p.team === 'spectator' ? res.state.settings.spectatorsSeeMap : p.role === 'spymaster',
+            )
+            .map((p) => p.id),
+        );
         this.status = 'playing';
         this.gameStartedAt = this.clock();
         this.gameEndedAt = null;
       }
+      if (e.type === 'SPYMASTER_CHANGED') this.mapSeers.add(e.playerId);
       if (e.type === 'GAME_OVER') {
         this.status = 'over';
         this.scoreboard[e.winner] += 1;
@@ -376,7 +392,8 @@ export class Room {
     if (seconds === 0) return null;
     const bonus =
       game.settings.firstTurnBonus && game.teamTurns[phase.team] === 1 ? FIRST_TURN_BONUS_MS : 0;
-    // A guess phase coming back from a rejected objection gets a fresh key, so full time again.
+    // After a rejected objection the guess key is the same as before it, but the stored timer is
+    // the objection's, so the guess phase starts over with its full time (ADR-027).
     const key = `${phase.name}:${String(turns)}:${String(game.clues.length)}`;
     return { key, kind: phase.name, totalMs: seconds * 1000 + bonus };
   }
@@ -430,11 +447,7 @@ export class Room {
    * shows them the map): a chat line would be an extra clue. Emotes stay open to everyone.
    */
   private mutedInGame(playerId: string): boolean {
-    if (this.status !== 'playing' || !this.game) return false;
-    const p = this.game.players.find((x) => x.id === playerId);
-    if (!p) return false;
-    if (p.team === 'spectator') return this.game.settings.spectatorsSeeMap;
-    return p.role === 'spymaster';
+    return this.status === 'playing' && this.mapSeers.has(playerId);
   }
 
   private throttle(last: Map<string, number>, playerId: string, intervalMs: number) {
@@ -598,6 +611,7 @@ export class Room {
       status: this.status,
       scoreboard: this.scoreboard,
       startBlockers: this.startBlockers(),
+      chatMuted: this.mutedInGame(forId),
       game: this.game
         ? toPublicView(this.game, forId, this.paused(), {
             timer: this.timerView(),

@@ -1,7 +1,7 @@
 import type { CardType } from '@clave/shared';
 import { CardArt } from '../../art/CardArt';
 import { t } from '../../i18n/es-AR';
-import { REVEALED_BG } from '../game/Board';
+import { REVEALED_BG } from '../../art/cardStyles';
 
 const CARD_TYPES: readonly CardType[] = ['red', 'blue', 'civilian', 'traitor'];
 
@@ -38,9 +38,8 @@ export function RulesContent({ headingLevel = 2 }: { headingLevel?: 2 | 3 }) {
           open={i === 0}
           className="rounded-lg bg-surface px-4 py-3"
         >
-          <summary className="cursor-pointer font-semibold">
-            <Heading className="inline text-lg">{section.title}</Heading>
-          </summary>
+          {/* Plain text in the summary: a heading inside it loses its semantics anyway. */}
+          <summary className="cursor-pointer text-lg font-semibold">{section.title}</summary>
           <div className="mt-2 flex flex-col gap-2 text-paper/90">
             {section.body.map((p) => (
               <p key={p}>{p}</p>
