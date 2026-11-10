@@ -205,7 +205,8 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Estado**: Aceptada (2026-11-10, M5, modo autónomo)
 - **Decisión**: las animaciones predeterminadas (cascada, flip 3D, sacudidas, destellos, barrido de turno, máquina de escribir, contadores) son keyframes CSS sobre `transform` y `opacity`, que corren fuera del hilo principal. Motion (SPEC §0.3) se usa donde aporta: las filas del lobby que viajan de columna (layout animations). `canvas-confetti` se carga solo al ganar.
 - **Movimiento reducido**: el sistema (`prefers-reduced-motion`) o el toggle de Ajustes ponen `data-motion="reduce"`; toda animación de movimiento lleva `.anim-move` y pasa a un fundido de 150 ms; el flip directamente no se renderiza. Motion recibe `reducedMotion="always"`.
-- **Rendimiento**: las cartas se memorizan con props derivadas, así un patch solo re-renderiza lo que cambió. Medido con CPU ×4: los frames de la revelación quedan en 16,7 ms (mediana y p95); el frame en el que llega el patch y React commitea queda acotado (~50–67 ms bajo ×4).
+- **Rendimiento**: las cartas se memorizan con props derivadas, así un patch solo re-renderiza lo que cambió. Medido con CPU ×4 sobre el build de producción (ADR-026): mediana 16,7 ms, p95 16,8 ms y el peor frame (el del patch) 33 ms.
+- **Review de M5**: el flip arranca en el mismo render que trae la carta revelada (patrón "prop anterior", sin esperar un efecto); los efectos de cada revelación y de pantalla viven en estado local con timers, así el patch siguiente no los corta; el sacudón del traidor va sobre el tablero y no sobre `<main>` (sacudir un ancestro de los overlays `fixed` los vuelve relativos a él); la viñeta entra y sale sola en ~2,9 s; con movimiento reducido no hay barrido, sacudón ni carta grande. Lo que ya terminó lleva `data-anim-done` (un listener global de `animationend`) y no se vuelve a reproducir al prender o apagar el movimiento reducido. Motion se usa con `LazyMotion` + `m` y sus features se cargan aparte.
 - **Descartadas**: todo en Motion (sus `x`/`y` corren en el hilo principal y caen frames bajo carga); WAAPI a mano (más código para lo mismo que CSS).
 
 ## ADR-025 — Sonido sintetizado con Web Audio, sin Howler por ahora (M6)
@@ -214,3 +215,11 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Decisión**: cada efecto del SPEC §6.2 y las dos músicas se generan con Web Audio (`apps/web/src/audio/engine.ts`). La API (`unlock`, `play`, `setMusic`, `setIntensity`, `setVolumes`) es la que va a usar la versión con archivos reales; `docs/AUDIO-ASSETS.md` lista qué buscar y cómo armar el sprite con Howler (SPEC §6.4).
 - **Por qué**: cero descargas y cero peso; Howler no aporta nada sin archivos.
 - **Detalles**: el contexto se crea y se reanuda en el primer gesto (iOS/Chrome); canales master/música/efectos persistidos; música apagada por defecto en mobile; el traidor silencia la música 3 s; "te toca" con la pestaña oculta hace parpadear el título y vibrar el celu.
+
+## ADR-026 — Los E2E corren contra el build de producción
+
+- **Estado**: Aceptada (2026-11-10, M5, modo autónomo)
+- **Decisión**: Playwright levanta la web con `vite build && vite preview` (con `VITE_SERVER_URL` apuntando al server de dev), no con `vite dev`.
+- **Por qué**: el criterio de M5 (60 fps en revelaciones) y el presupuesto de bundle hablan de lo que se publica. En dev, React renderiza dos veces (StrictMode) y suma chequeos: el frame del patch medía 100–117 ms bajo CPU ×4 contra 33 ms en producción. Además los E2E prueban el mismo bundle que va a Vercel.
+- **Costo**: ~10 s más por corrida para el build. Localmente, si ya hay un server en el puerto 5173, Playwright lo reusa (puede ser el de dev).
+- **Higiene**: cada spec cierra en `afterEach` los contextos que abrió (`closePlayers`). Antes quedaban ~90 páginas vivas con su audio y sus sockets al final de la corrida, y el test de audio fallaba solo en la corrida completa.
