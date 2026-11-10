@@ -1,16 +1,21 @@
-import { MotionConfig } from 'motion/react';
+import { LazyMotion, MotionConfig } from 'motion/react';
 import { t } from './i18n/es-AR';
 import { navigate, useRoute } from './lib/router';
 import { Landing } from './screens/Landing';
 import { RoomScreen } from './screens/RoomScreen';
 import { useReducedMotion } from './store/prefs';
 
+// Motion's features stay out of the initial bundle: the lobby rows animate once they arrive.
+const loadMotionFeatures = () => import('./animations/motionFeatures').then((m) => m.default);
+
 export function App() {
   const reduced = useReducedMotion();
   return (
     // Motion follows the same reduced-motion rule as the CSS animations (system or "Ajustes").
     <MotionConfig reducedMotion={reduced ? 'always' : 'never'}>
-      <Screen />
+      <LazyMotion features={loadMotionFeatures} strict>
+        <Screen />
+      </LazyMotion>
     </MotionConfig>
   );
 }

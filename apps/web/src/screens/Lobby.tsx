@@ -1,5 +1,5 @@
 import { TEAMS, type PublicPlayer, type RoomView, type Team } from '@clave/shared';
-import { LayoutGroup, motion } from 'motion/react';
+import { LayoutGroup, m } from 'motion/react';
 import { useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { ConnectionIndicator } from '../components/ConnectionIndicator';
@@ -27,11 +27,12 @@ function PlayerRow({ player, view }: { player: PublicPlayer; view: RoomView }) {
   ].filter(Boolean);
   return (
     // Joining slides in; changing team, the row travels to the other column (SPEC §4 lobby).
-    <motion.li
+    <m.li
       layout
       layoutId={player.id}
-      initial={{ opacity: 0, transform: 'translateX(-12px)' }}
-      animate={{ opacity: 1, transform: 'translateX(0px)' }}
+      // `x`, not a raw transform, so MotionConfig's reducedMotion="user" can drop it.
+      initial={{ opacity: 0, x: -12 }}
+      animate={{ opacity: 1, x: 0 }}
       transition={{ type: 'spring', duration: 0.45, bounce: 0.15 }}
       className="flex items-center gap-2 py-1"
       data-player={player.nickname}
@@ -49,7 +50,7 @@ function PlayerRow({ player, view }: { player: PublicPlayer; view: RoomView }) {
           {t.lobby.kickIcon}
         </button>
       )}
-    </motion.li>
+    </m.li>
   );
 }
 
