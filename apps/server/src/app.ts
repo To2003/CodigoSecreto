@@ -3,6 +3,7 @@ import { HEALTH_PATH, type HealthResponse } from '@clave/shared';
 import cors from 'cors';
 import express, { type Express } from 'express';
 import { Server } from 'socket.io';
+import { clientIp, DEFAULT_IP_LIMITS, IpLimiter, type IpLimitOptions } from './handlers/ipLimits';
 import { broadcast, registerLobbyHandlers, type IoServer } from './handlers/lobby';
 import type { Logger } from './log';
 import { RoomStore } from './rooms/store';
@@ -20,6 +21,10 @@ export interface ServerOptions {
   log: Logger;
   /** Injectable clock for tests. */
   now?: () => number;
+  /** Proxies in front of the server whose X-Forwarded-For entry is trusted (Render: 1). */
+  trustProxyHops?: number;
+  /** Per-IP limits; tests lower them. */
+  ipLimits?: Partial<IpLimitOptions>;
 }
 
 export interface ClaveServer {
@@ -40,7 +45,13 @@ export interface ClaveServer {
  */
 const steadyNow = () => performance.timeOrigin + performance.now();
 
-export function createServer({ clientOrigins, log, now = steadyNow }: ServerOptions): ClaveServer {
+export function createServer({
+  clientOrigins,
+  log,
+  now = steadyNow,
+  trustProxyHops = 0,
+  ipLimits = {},
+}: ServerOptions): ClaveServer {
   const isAllowed = (origin: string | undefined) =>
     origin !== undefined && clientOrigins.includes(origin);
 
@@ -77,16 +88,33 @@ export function createServer({ clientOrigins, log, now = steadyNow }: ServerOpti
   });
 
   const store = new RoomStore(undefined, now);
+  const limiter = new IpLimiter({ ...DEFAULT_IP_LIMITS, ...ipLimits }, now);
+
+  // Too many sockets from one IP: refused before any handler runs (BACKLOG #4).
+  io.use((socket, next) => {
+    const ip = clientIp(socket.handshake.address, socket.handshake.headers, trustProxyHops);
+    if (!limiter.openSocket(ip)) {
+      log.warn('socket rejected: too many connections from one address');
+      next(new Error('TOO_MANY_CONNECTIONS'));
+      return;
+    }
+    socket.once('disconnect', () => {
+      limiter.closeSocket(ip);
+    });
+    next();
+  });
 
   io.on('connection', (socket) => {
     log.info('socket connected', { socketId: socket.id });
-    registerLobbyHandlers({ io, store, log, now }, socket);
+    const ip = clientIp(socket.handshake.address, socket.handshake.headers, trustProxyHops);
+    registerLobbyHandlers({ io, store, log, now, limiter, ip }, socket);
     socket.on('disconnect', (reason) => {
       log.info('socket disconnected', { socketId: socket.id, reason });
     });
   });
 
   const sweep = () => {
+    limiter.prune();
     for (const { room, events } of store.sweep(now())) broadcast(io, room, events);
   };
   const sweeper = setInterval(sweep, SWEEP_INTERVAL_MS);

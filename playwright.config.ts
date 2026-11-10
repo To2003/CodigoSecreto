@@ -20,7 +20,8 @@ export default defineConfig({
       command: 'pnpm --filter @clave/server dev',
       url: 'http://localhost:3001/health',
       reuseExistingServer: !CI,
-      env: { CLIENT_ORIGIN: 'http://localhost:5173', LOG_LEVEL: 'warn' },
+      // Every test player comes from 127.0.0.1 and the suite creates dozens of rooms a minute.
+      env: { CLIENT_ORIGIN: 'http://localhost:5173', LOG_LEVEL: 'warn', ROOMS_PER_MINUTE: '1000' },
     },
     {
       // The production build, as it ships (ADR-026): dev React re-renders twice and adds checks,

@@ -10,7 +10,7 @@ if (!parsed.ok) {
   log.error('invalid configuration', { error: parsed.error });
   process.exit(1);
 }
-const { port, clientOrigins } = parsed.config;
+const { port, clientOrigins, trustProxyHops, roomsPerMinute } = parsed.config;
 
 process.on('uncaughtException', (err) => {
   log.error('uncaught exception', { err });
@@ -21,7 +21,12 @@ process.on('unhandledRejection', (reason) => {
   process.exit(1);
 });
 
-const server = createServer({ clientOrigins, log });
+const server = createServer({
+  clientOrigins,
+  log,
+  trustProxyHops,
+  ipLimits: { roomsPerWindow: roomsPerMinute },
+});
 
 server.httpServer.on('error', (err) => {
   log.error('http server error', { err });

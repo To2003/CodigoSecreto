@@ -5,7 +5,13 @@ describe('parseConfig', () => {
   it('uses development defaults', () => {
     expect(parseConfig({})).toEqual({
       ok: true,
-      config: { port: 3001, clientOrigins: ['http://localhost:5173'], logLevel: 'info' },
+      config: {
+        port: 3001,
+        clientOrigins: ['http://localhost:5173'],
+        logLevel: 'info',
+        trustProxyHops: 0,
+        roomsPerMinute: 10,
+      },
     });
   });
 
@@ -26,6 +32,9 @@ describe('parseConfig', () => {
     ['port out of range', { PORT: '70000' }],
     ['port not a number', { PORT: 'abc' }],
     ['port zero', { PORT: '0' }],
+    ['proxy hops not a number', { TRUST_PROXY_HOPS: 'yes' }],
+    ['too many proxy hops', { TRUST_PROXY_HOPS: '9' }],
+    ['rooms per minute zero', { ROOMS_PER_MINUTE: '0' }],
   ])('rejects %s', (_label, env) => {
     expect(parseConfig(env)).toMatchObject({ ok: false });
   });

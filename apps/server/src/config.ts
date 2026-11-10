@@ -3,6 +3,10 @@ export interface ServerConfig {
   /** Normalized origins (scheme://host[:port], lowercase, no trailing slash). */
   clientOrigins: string[];
   logLevel: string;
+  /** Proxies whose X-Forwarded-For entry is trusted for the client's IP (Render: 1). */
+  trustProxyHops: number;
+  /** Rooms one IP may create per minute (BACKLOG #4). */
+  roomsPerMinute: number;
 }
 
 export type ConfigResult = { ok: true; config: ServerConfig } | { ok: false; error: string };
@@ -41,5 +45,26 @@ export function parseConfig(env: Record<string, string | undefined>): ConfigResu
     if (!clientOrigins.includes(url.origin)) clientOrigins.push(url.origin);
   }
 
-  return { ok: true, config: { port, clientOrigins, logLevel: env.LOG_LEVEL ?? 'info' } };
+  const hopsRaw = env.TRUST_PROXY_HOPS ?? '0';
+  const trustProxyHops = Number(hopsRaw);
+  if (!/^\d$/.test(hopsRaw) || trustProxyHops > 5) {
+    return { ok: false, error: `TRUST_PROXY_HOPS must be 0 to 5, got "${hopsRaw}"` };
+  }
+
+  const roomsRaw = env.ROOMS_PER_MINUTE ?? '10';
+  const roomsPerMinute = Number(roomsRaw);
+  if (!/^\d+$/.test(roomsRaw) || roomsPerMinute < 1) {
+    return { ok: false, error: `ROOMS_PER_MINUTE must be a positive integer, got "${roomsRaw}"` };
+  }
+
+  return {
+    ok: true,
+    config: {
+      port,
+      clientOrigins,
+      logLevel: env.LOG_LEVEL ?? 'info',
+      trustProxyHops,
+      roomsPerMinute,
+    },
+  };
 }

@@ -17,6 +17,7 @@ import { RoomError, type PlayerAction, type Room } from '../rooms/room';
 import type { RoomStore } from '../rooms/store';
 import { eventsFor } from '../views/gameView';
 import { cryptoRng } from '../rooms/rng';
+import type { IpLimiter } from './ipLimits';
 import { TokenBucket } from './rateLimit';
 
 interface SocketData {
@@ -31,6 +32,9 @@ export interface LobbyContext {
   store: RoomStore;
   log: Logger;
   now: () => number;
+  limiter: IpLimiter;
+  /** This socket's client address (see clientIp). Never logged: it's personal data. */
+  ip: string;
 }
 
 const channel = (code: string, playerId: string) => `player:${code}:${playerId}`;
@@ -55,7 +59,7 @@ export function broadcast(io: IoServer, room: Room, events: RoomEvent[]) {
 const openSockets = new Map<string, Set<string>>();
 
 export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
-  const { io, store, log, now } = ctx;
+  const { io, store, log, now, limiter, ip } = ctx;
   const bucket = new TokenBucket(20, 20, now);
 
   const on = <E extends ClientEventName>(
@@ -135,6 +139,8 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
   const newSeat = () => ({ id: randomUUID(), token: randomBytes(24).toString('base64url') });
 
   on('room:create', (profile) => {
+    if (!limiter.allows(ip, 'rooms')) throw new RoomError('RATE_LIMITED');
+    limiter.count(ip, 'rooms');
     detach(true);
     const room = store.create(now());
     const { player } = room.join(profile, now(), newSeat());
@@ -144,8 +150,13 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
   });
 
   on('room:join', ({ roomCode, playerId, token, ...profile }) => {
+    // Past the limit of joins to missing codes, every join is refused until the window ends.
+    if (!limiter.allows(ip, 'failedJoins')) throw new RoomError('RATE_LIMITED');
     const room = store.get(roomCode);
-    if (!room) throw new RoomError('ROOM_NOT_FOUND');
+    if (!room) {
+      limiter.count(ip, 'failedJoins');
+      throw new RoomError('ROOM_NOT_FOUND');
+    }
     if (socket.data.roomCode !== roomCode || socket.data.playerId !== playerId) detach(true);
 
     if (playerId && token && room.players.some((p) => p.id === playerId)) {
