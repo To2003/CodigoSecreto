@@ -1,4 +1,4 @@
-import type { RoomView, Team } from '@clave/shared';
+import { gameStats, TEAMS, type GameView, type RoomView, type Team } from '@clave/shared';
 import { t } from '../../i18n/es-AR';
 import { backToLobby, rematch } from '../../net/client';
 
@@ -27,6 +27,7 @@ export function GameOverPanel({
       <p className="text-sm text-paper/80">
         {t.game.scoreboard(view.scoreboard.red, view.scoreboard.blue)}
       </p>
+      {view.game && <Stats game={view.game} teamName={teamName} />}
       {isHost ? (
         <div className="flex flex-wrap gap-2">
           <button
@@ -54,6 +55,55 @@ export function GameOverPanel({
       ) : (
         <p className="text-sm text-paper/70">{t.game.waitingHostEnd}</p>
       )}
+    </section>
+  );
+}
+
+/** End-of-game stats (SPEC §9): duration, clues and hits per team, best clue and blunder. */
+function Stats({ game, teamName }: { game: GameView; teamName: (team: Team) => string }) {
+  const stats = gameStats(game.clues, game.cards);
+  return (
+    <section
+      aria-labelledby="stats-title"
+      className="flex flex-col gap-1 text-sm"
+      data-testid="stats"
+    >
+      <h3 id="stats-title" className="font-stamp text-lg">
+        {t.stats.title}
+      </h3>
+      {game.durationMs !== null && <p>{t.stats.duration(game.durationMs)}</p>}
+      <ul className="flex flex-col gap-0.5">
+        {TEAMS.map((team) => (
+          <li key={team}>
+            <span className="font-semibold">{teamName(team)}</span>
+            {t.game.clueSeparator}
+            {t.stats.team(
+              stats.teams[team].clues,
+              stats.teams[team].hits,
+              stats.teams[team].misses,
+            )}
+          </li>
+        ))}
+      </ul>
+      {stats.bestClue && (
+        <p>
+          {t.stats.bestClue(
+            t.game.clueLine(stats.bestClue.word, stats.bestClue.count),
+            teamName(stats.bestClue.team),
+            stats.bestClue.hits,
+          )}
+        </p>
+      )}
+      <p>
+        {stats.blunder
+          ? t.stats.blunder(
+              stats.blunder.word,
+              t.game.cardType[stats.blunder.type],
+              teamName(stats.blunder.team),
+            )
+          : t.stats.noBlunder}
+      </p>
+      <p className="text-paper/70">{t.game.historyHint}</p>
     </section>
   );
 }

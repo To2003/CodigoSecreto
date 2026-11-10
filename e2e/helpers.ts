@@ -67,7 +67,12 @@ export const row = (scope: Page | Locator, nickname: string) =>
 /** Ana (host) and Caro red, Beto and Dani blue (lobby auto-balance); Ana and Beto spymasters. */
 export async function startGame(
   browser: Browser,
-  options: { context?: BrowserContextOptions; customWords?: string[] } = {},
+  options: {
+    context?: BrowserContextOptions;
+    customWords?: string[];
+    /** Runs on the host's lobby before starting: room settings, for example. */
+    beforeStart?: (host: Page) => Promise<void>;
+  } = {},
 ) {
   const [ana, beto, caro, dani] = await Promise.all(
     ['Ana', 'Beto', 'Caro', 'Dani'].map((name) => newPlayer(browser, name, options.context)),
@@ -86,6 +91,7 @@ export async function startGame(
       ana.page.getByText(`${options.customWords.length} palabras propias`),
     ).toBeVisible();
   }
+  if (options.beforeStart) await options.beforeStart(ana.page);
   await team(ana.page, 'Equipo Rojo').getByRole('button', { name: 'Ser jefe' }).click();
   await team(beto.page, 'Equipo Azul').getByRole('button', { name: 'Ser jefe' }).click();
   await ana.page.getByRole('button', { name: 'Empezar' }).click();

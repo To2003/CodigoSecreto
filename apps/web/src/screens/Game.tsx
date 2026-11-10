@@ -9,6 +9,8 @@ import { PauseOverlay } from '../components/game/PauseOverlay';
 import { TeamPanel } from '../components/game/TeamPanel';
 import { TurnStamp } from '../components/game/TurnStamp';
 import { SettingsButton } from '../components/SettingsDialog';
+import { ChatPanel } from '../components/social/ChatPanel';
+import { EmoteLayer } from '../components/social/EmoteLayer';
 import { t } from '../i18n/es-AR';
 import { backToLobby } from '../net/client';
 import { usePrefs, useReducedMotion } from '../store/prefs';
@@ -23,6 +25,7 @@ function lastNews(events: RoomEvent[], teamName: (team: Team) => string): string
         : t.game.turnEnded[e.reason];
     }
     if (e.type === 'CLUE_GIVEN') return t.game.yourTurnAgents(t.game.clueLine(e.word, e.count));
+    if (e.type === 'OBJECTION_RESOLVED') return t.game.objectionResolved(e.accepted);
   }
   return null;
 }
@@ -90,10 +93,13 @@ function Counter({ view, team, name }: { view: RoomView; team: Team; name: strin
   );
 }
 
-/** Mobile (SPEC §3.3): teams and clue history live in a sheet with one tab per team. */
+type SheetTab = Team | 'chat';
+const SHEET_TABS: readonly SheetTab[] = [...TEAMS, 'chat'];
+
+/** Mobile (SPEC §3.3): teams, clue history and chat live in a sheet with one tab each. */
 function TeamsSheet({ view, teamName }: { view: RoomView; teamName: (team: Team) => string }) {
   const ref = useRef<HTMLDialogElement>(null);
-  const [tab, setTab] = useState<Team>('red');
+  const [tab, setTab] = useState<SheetTab>('red');
   // Content only while open: a closed <dialog> would otherwise duplicate the teams in the DOM.
   const [open, setOpen] = useState(false);
   return (
@@ -121,32 +127,39 @@ function TeamsSheet({ view, teamName }: { view: RoomView; teamName: (team: Team)
           className="mb-3 flex gap-2"
           onKeyDown={(e) => {
             if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-              const next: Team = tab === 'red' ? 'blue' : 'red';
+              const step = e.key === 'ArrowRight' ? 1 : SHEET_TABS.length - 1;
+              const next =
+                SHEET_TABS[(SHEET_TABS.indexOf(tab) + step) % SHEET_TABS.length] ?? 'red';
               setTab(next);
               document.getElementById(`teams-tab-${next}`)?.focus();
             }
           }}
         >
-          {TEAMS.map((team) => (
+          {SHEET_TABS.map((key) => (
             <button
-              key={team}
+              key={key}
               type="button"
               role="tab"
-              id={`teams-tab-${team}`}
+              id={`teams-tab-${key}`}
               aria-controls="teams-panel"
-              tabIndex={tab === team ? 0 : -1}
-              aria-selected={tab === team}
+              tabIndex={tab === key ? 0 : -1}
+              aria-selected={tab === key}
               onClick={() => {
-                setTab(team);
+                setTab(key);
               }}
-              className={`flex-1 rounded-md px-3 py-1.5 font-semibold ${tab === team ? (team === 'red' ? 'bg-red-deep' : 'bg-blue-deep') : 'border border-line'}`}
+              className={`flex-1 rounded-md px-3 py-1.5 font-semibold ${tab === key ? (key === 'red' ? 'bg-red-deep' : key === 'blue' ? 'bg-blue-deep' : 'bg-surface') : 'border border-line'}`}
             >
-              {teamName(team)}
+              {key === 'chat' ? t.social.chat : teamName(key)}
             </button>
           ))}
         </div>
         <div role="tabpanel" id="teams-panel" aria-labelledby={`teams-tab-${tab}`}>
-          {open && <TeamPanel view={view} team={tab} name={teamName(tab)} />}
+          {open &&
+            (tab === 'chat' ? (
+              <ChatPanel view={view} />
+            ) : (
+              <TeamPanel view={view} team={tab} name={teamName(tab)} />
+            ))}
         </div>
         <form method="dialog" className="mt-3 text-right">
           <button type="submit" className="rounded-md bg-accent px-4 py-1.5 font-semibold text-ink">
@@ -241,9 +254,13 @@ export function Game({ view }: { view: RoomView }) {
             <GameOverPanel view={view} teamName={teamName} />
           </section>
         </div>
-        <TeamPanel view={view} team="blue" name={teamName('blue')} className="hidden lg:flex" />
+        <div className="hidden flex-col gap-4 lg:flex">
+          <TeamPanel view={view} team="blue" name={teamName('blue')} />
+          <ChatPanel view={view} />
+        </div>
       </div>
       <PauseOverlay view={view} teamName={teamName} />
+      <EmoteLayer view={view} />
       <GameEffects
         game={game}
         events={events}

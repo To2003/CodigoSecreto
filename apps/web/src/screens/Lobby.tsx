@@ -5,6 +5,8 @@ import { Avatar } from '../components/Avatar';
 import { ConnectionIndicator } from '../components/ConnectionIndicator';
 import { SettingsButton } from '../components/SettingsDialog';
 import { SettingsPanel } from '../components/SettingsPanel';
+import { ChatPanel } from '../components/social/ChatPanel';
+import { EmoteLayer } from '../components/social/EmoteLayer';
 import { t } from '../i18n/es-AR';
 import { navigate } from '../lib/router';
 import {
@@ -292,6 +294,8 @@ export function Lobby({ view }: { view: RoomView }) {
         </section>
 
         <SettingsPanel view={view} editable={isHost} onError={setError} />
+        <ChatPanel view={view} />
+        <EmoteLayer view={view} />
       </main>
     </LayoutGroup>
   );

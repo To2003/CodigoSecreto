@@ -296,6 +296,43 @@
   animation: roll-in 300ms var(--ease-out) both;
 }
 
+/* Timer: the last 10 s pulse (only while they last). */
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+.anim-pulse {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+/* Emotes float up over the avatar and fade (SPEC §9). */
+@keyframes emote-float {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(-24px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-32px);
+  }
+}
+.anim-emote {
+  animation: emote-float 2200ms var(--ease-out) both;
+}
+
 /* Game over: the rest of the key map shows up in a cascade. */
 .anim-map-in {
   animation: fade-in 300ms ease-out both;

@@ -5,6 +5,7 @@ import { t } from '../../i18n/es-AR';
 import { pointCard, revealCard } from '../../net/client';
 import { useReducedMotion } from '../../store/prefs';
 import { useRoom } from '../../store/room';
+import { useSocial } from '../../store/social';
 import { Avatar } from '../Avatar';
 import { FitText } from './FitText';
 
@@ -110,6 +111,8 @@ interface CardProps {
   iPoint: boolean;
   pointers: PublicPlayer[];
   over: boolean;
+  /** Picked from the clue history (SPEC §9). */
+  highlighted: boolean;
 }
 
 /** Props compared by value: a patch rebuilds every object, but most cards don't change. */
@@ -127,6 +130,7 @@ function sameCard(a: CardProps, b: CardProps): boolean {
     a.directReveal === b.directReveal &&
     a.iPoint === b.iPoint &&
     a.over === b.over &&
+    a.highlighted === b.highlighted &&
     a.pointers.map((p) => `${p.id}:${p.avatar}:${p.color}:${p.nickname}`).join() ===
       b.pointers.map((p) => `${p.id}:${p.avatar}:${p.color}:${p.nickname}`).join()
   );
@@ -144,6 +148,7 @@ const Card = memo(function Card({
   iPoint,
   pointers,
   over,
+  highlighted,
 }: CardProps) {
   const reduced = useReducedMotion();
   // Flip only when this card turns while on screen (not when the board loads already revealed).
@@ -248,7 +253,14 @@ const Card = memo(function Card({
       data-word={card.word}
       data-revealed={card.revealed}
       data-type={type}
+      data-highlighted={highlighted || undefined}
     >
+      {highlighted && (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute -inset-1 z-10 rounded-[13px] ring-4 ring-accent"
+        />
+      )}
       <button
         type="button"
         disabled={!canPoint}
@@ -347,6 +359,7 @@ export function Board({ view, showMap }: { view: RoomView; showMap: boolean }) {
   const cards = view.game?.cards ?? [];
   const [armed, setArmed] = useState<string | null>(null);
   const kinds = revealKinds(useRoom((s) => s.lastEvents));
+  const highlight = useSocial((s) => s.highlight);
   const game = view.game;
   const me = view.players.find((p) => p.id === view.youId);
   const phase = game?.phase;
@@ -384,6 +397,7 @@ export function Board({ view, showMap }: { view: RoomView; showMap: boolean }) {
           iPoint={game?.points[view.youId] === card.id}
           pointers={view.players.filter((p) => game?.points[p.id] === card.id)}
           over={phase?.name === 'over'}
+          highlighted={highlight.includes(card.id)}
           card={card}
           showMap={showMap}
           armed={armed === card.id}

@@ -3,10 +3,19 @@ import { useEffect, useRef } from 'react';
 import { t } from '../i18n/es-AR';
 import { usePrefs } from '../store/prefs';
 import { useRoom } from '../store/room';
+import { useSocial } from '../store/social';
 import { isMyTurn, soundsFor } from './cues';
 import { audio } from './engine';
 
 const BLINK_MS = 1000;
+
+/** True when a chat log is visible: the desktop column, or the open sheet on a phone. */
+function chatOnScreen(): boolean {
+  if (document.hidden) return false;
+  return [...document.querySelectorAll<HTMLElement>('[data-chat-log]')].some(
+    (el) => el.offsetParent !== null,
+  );
+}
 
 /**
  * Plays the sounds of each patch, runs the music for the screen, and nags when it's your turn
@@ -28,6 +37,16 @@ export function useSoundCues(view: RoomView) {
     if (sounds.includes('reveal_traitor')) audio.silenceMusic(3);
     if (sounds.includes('your_turn') && vibration && 'vibrate' in navigator) navigator.vibrate(200);
   }, [seq, events, view, vibration]);
+
+  // Chat: a sound only when no chat is on screen (SPEC §6.2), and never for your own lines.
+  const messages = useSocial((s) => s.messages);
+  const heardRef = useRef(messages.at(-1)?.id ?? 0);
+  useEffect(() => {
+    const last = messages.at(-1);
+    if (!last || last.id <= heardRef.current) return;
+    heardRef.current = last.id;
+    if (last.playerId !== view.youId && !chatOnScreen()) audio.play('chat');
+  }, [messages, view.youId]);
 
   // Music: lobby loop or game loop; the tension layer when a team is about to win.
   const inGame = view.game !== null && view.game.phase.name !== 'over';

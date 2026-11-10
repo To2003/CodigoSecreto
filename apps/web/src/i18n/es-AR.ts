@@ -3,6 +3,7 @@ import type {
   CardType,
   ClueCount,
   ClueRejection,
+  EmoteId,
   ErrorCode,
   StartBlocker,
   Team,
@@ -146,7 +147,7 @@ export const t = {
     stampTurn: (team: string) => `Turno ${team}`,
     stampPaused: 'En pausa',
     stampOver: 'Caso cerrado',
-    teamsAndHistory: 'Equipos e historial',
+    teamsAndHistory: 'Equipos, historial y chat',
     close: 'Cerrar',
     viewAsAgent: 'Ver como agente',
     traitorStamp: 'TRAIDOR',
@@ -179,7 +180,7 @@ export const t = {
       guesses_used: 'Se acabaron los intentos.',
       ended: 'Pasaron el turno.',
       timeout: 'Se acabó el tiempo.',
-      objection: 'Se aceptó la objeción.',
+      objection: 'Objeción aceptada: se terminó el turno y el rival se lleva una carta.',
     },
     history: 'Historial de pistas',
     noClues: 'Todavía no hay pistas.',
@@ -203,6 +204,81 @@ export const t = {
     backToLobby: 'Volver al lobby',
     waitingHostEnd: 'El host decide si hay revancha.',
     players: 'Jugadores',
+    timer: (kind: 'clue' | 'guess' | 'objection', seconds: number) =>
+      kind === 'objection'
+        ? `Votación: quedan ${seconds} s`
+        : kind === 'clue'
+          ? `Tiempo para la pista: quedan ${seconds} s`
+          : `Tiempo para adivinar: quedan ${seconds} s`,
+    timerPaused: 'Tiempo en pausa',
+    timerPausedIcon: '‖',
+    object: 'Objetar pista',
+    objectHelp: 'Si la pista rompe las reglas (rimas, letras, posiciones), la sala vota.',
+    objectionTitle: (who: string, clue: string) => `${who} objetó la pista ${clue}.`,
+    objectionQuestion: '¿Vale la objeción?',
+    voteYes: 'Sí, esa pista no vale',
+    voteNo: 'No, la pista vale',
+    voted: 'Ya votaste. Esperando al resto…',
+    notVoter: 'Vota el resto de la sala.',
+    votesTally: (yes: number, no: number, total: number) =>
+      `${yes} a favor · ${no} en contra · votan ${total}`,
+    objectionResolved: (accepted: boolean) =>
+      accepted
+        ? 'Objeción aceptada: se terminó el turno y el rival se lleva una carta.'
+        : 'Objeción rechazada: la pista vale.',
+    agentsLeft: (n: number) =>
+      n === 1 ? 'Te queda 1 agente por encontrar.' : `Te quedan ${n} agentes por encontrar.`,
+    historyHint: 'Tocá una pista para ver sus cartas en el tablero.',
+    penalty: (word: string) => `${word} (penalización)`,
+  },
+  social: {
+    chat: 'Chat',
+    scope: 'Para quién',
+    scopeAll: 'Todos',
+    scopeTeam: 'Mi equipo',
+    placeholder: 'Escribí algo…',
+    send: 'Mandar',
+    empty: 'Nadie dijo nada todavía.',
+    disabled: 'El chat está apagado en esta sala.',
+    muted: 'Durante la partida, quien ve el mapa no escribe. Mandá un emote.',
+    teamTag: 'equipo',
+    you: 'vos',
+    line: (name: string, text: string, team: boolean) =>
+      team ? `${name} (equipo): ${text}` : `${name}: ${text}`,
+    emotes: 'Emotes',
+    emoji: {
+      thinking: '🤔',
+      shocked: '😱',
+      laughing: '😂',
+      clap: '👏',
+      please: '🙏',
+      fire: '🔥',
+    } satisfies Record<EmoteId, string>,
+    emoteName: {
+      thinking: 'Mandar emote: pensando',
+      shocked: 'Mandar emote: sorpresa',
+      laughing: 'Mandar emote: risa',
+      clap: 'Mandar emote: aplauso',
+      please: 'Mandar emote: por favor',
+      fire: 'Mandar emote: fuego',
+    } satisfies Record<EmoteId, string>,
+    emoteFrom: (name: string, emoji: string) => `${name} ${emoji}`,
+  },
+  stats: {
+    title: 'Cómo fue el caso',
+    duration: (ms: number) => {
+      const total = Math.round(ms / 1000);
+      const m = Math.floor(total / 60);
+      const s = total % 60;
+      return m === 0 ? `Duración: ${s} s` : `Duración: ${m} min ${s} s`;
+    },
+    team: (clues: number, hits: number, misses: number) =>
+      `${clues} ${clues === 1 ? 'pista' : 'pistas'} · ${hits} ${hits === 1 ? 'acierto' : 'aciertos'} · ${misses} ${misses === 1 ? 'error' : 'errores'}`,
+    bestClue: (clue: string, team: string, hits: number) =>
+      `Mejor pista: ${clue}, del ${team} (conectó ${hits})`,
+    blunder: (word: string, type: string, team: string) =>
+      `Pifia de la partida: ${word} (${type}), del ${team}`,
+    noBlunder: 'Sin pifias. ¡Qué nivel!',
   },
   prefs: {
     open: 'Ajustes',

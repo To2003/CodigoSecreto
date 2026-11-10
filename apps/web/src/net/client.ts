@@ -4,12 +4,14 @@ import type {
   ClueCount,
   ErrorPayload,
   ClientPayload,
+  EmoteId,
   ErrorCode,
   Profile,
   SettingsPatch,
 } from '@clave/shared';
 import { forgetSeat, loadSeat, saveSeat } from '../lib/storage';
 import { patchAction, useRoom } from '../store/room';
+import { social } from '../store/social';
 import { socket } from './socket';
 
 const ACK_TIMEOUT_MS = 8_000;
@@ -52,6 +54,9 @@ function enter(code: string, ack: Record<string, unknown>) {
 
 export async function createRoom(profile: Profile): Promise<Result<{ roomCode: string }>> {
   lastProfile = profile;
+  // A new room starts with an empty chat. Reset before asking: the server sends the chat
+  // history right after the state, before the ack arrives.
+  social.reset();
   const res = await request('room:create', profile);
   if (!res.ok) return res;
   const roomCode = String(res.roomCode);
@@ -62,6 +67,7 @@ export async function createRoom(profile: Profile): Promise<Result<{ roomCode: s
 /** Joins, or reclaims the stored seat for this room when there is one (SPEC §2.4). */
 export async function joinRoom(code: string, profile: Profile): Promise<Result> {
   lastProfile = profile;
+  if (currentCode !== code) social.reset();
   const seat = loadSeat(code);
   const res = await request('room:join', { ...profile, roomCode: code, ...(seat ?? {}) });
   if (!res.ok) {
@@ -78,6 +84,7 @@ export async function leaveRoom(): Promise<Result> {
   if (code) forgetSeat(code);
   currentCode = null;
   useRoom.setState({ view: null, seq: -1, lastEvents: [] });
+  social.reset();
   return res;
 }
 
@@ -96,6 +103,11 @@ export const endGuessing = () => request('game:endGuessing', {});
 export const rematch = (keepSpymasters: boolean) => request('game:rematch', { keepSpymasters });
 export const backToLobby = () => request('game:backToLobby', {});
 export const reassignSpymaster = (playerId: string) => request('game:setSpymaster', { playerId });
+export const objectClue = () => request('game:object', {});
+export const voteObjection = (accept: boolean) => request('game:vote', { accept });
+export const sendChat = (text: string, scope: 'all' | 'team') =>
+  request('chat:send', { text, scope });
+export const sendEmote = (emoteId: EmoteId) => request('emote:send', { emoteId });
 
 /** Re-sends room:join with the stored seat: answers with a full room:state. */
 let resyncing = false;
@@ -130,4 +142,14 @@ socket.on('room:kicked', () => {
 // After a drop, socket.io reconnects on its own; then we reclaim the seat.
 socket.on('connect', () => {
   if (useRoom.getState().seq >= 0) resync();
+});
+
+socket.on('chat:history', (messages) => {
+  social.history(messages);
+});
+socket.on('chat:message', (message) => {
+  social.message(message);
+});
+socket.on('emote', (emote) => {
+  social.emote(emote);
 });

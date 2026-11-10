@@ -9,6 +9,9 @@ import type { CSSProperties } from 'react';
 import { useId, useState } from 'react';
 import { t } from '../../i18n/es-AR';
 import { endGuessing, giveClue } from '../../net/client';
+import { useRoom } from '../../store/room';
+import { ObjectButton, ObjectionPanel } from './Objection';
+import { TimerRing } from './TimerRing';
 
 const COUNTS: ClueCount[] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 'inf'];
 
@@ -123,7 +126,7 @@ function ClueInput({ view }: { view: RoomView }) {
   );
 }
 
-/** What each player can do right now (SPEC §3.2 "zona de acción"). */
+/** What each player can do right now (SPEC §3.2 "zona de acción"), plus the phase timer. */
 export function ActionZone({
   view,
   teamName,
@@ -131,6 +134,34 @@ export function ActionZone({
   view: RoomView;
   teamName: (team: Team) => string;
 }) {
+  const seq = useRoom((s) => s.seq);
+  const game = view.game;
+  if (!game || game.phase.name === 'over') return null;
+  if (game.phase.name === 'objection') return <ObjectionPanel view={view} />;
+  const me = view.players.find((p) => p.id === view.youId);
+  const timer = game.timer;
+  // Only the ones who have to act hear the last seconds tick.
+  const acting =
+    me?.team === game.phase.team &&
+    (game.phase.name === 'clue' ? me.role === 'spymaster' : me.role === 'agent');
+  return (
+    <div className="flex items-start gap-3">
+      {timer && timer.kind !== 'objection' && <TimerRing key={seq} timer={timer} tick={acting} />}
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        {/* SPEC §8.3: the spymaster always knows how many of their agents are still hidden. */}
+        {me?.role === 'spymaster' && me.team !== 'spectator' && (
+          <p className="text-sm text-paper/80" data-testid="agents-left">
+            {t.game.agentsLeft(game.remaining[me.team])}
+          </p>
+        )}
+        <PhaseActions view={view} teamName={teamName} />
+        <ObjectButton view={view} />
+      </div>
+    </div>
+  );
+}
+
+function PhaseActions({ view, teamName }: { view: RoomView; teamName: (team: Team) => string }) {
   const game = view.game;
   const me = view.players.find((p) => p.id === view.youId);
   if (!game || game.phase.name === 'over' || game.phase.name === 'objection') return null;
@@ -180,7 +211,7 @@ export function ActionZone({
             disabled={!guessed}
             aria-describedby={guessed ? undefined : 'end-turn-help'}
             onClick={() => void endGuessing()}
-            className="rounded-md border border-paper/50 px-4 py-2 font-semibold active:scale-97 disabled:opacity-50"
+            className="rounded-md border border-paper/50 px-4 py-2 font-semibold whitespace-nowrap active:scale-97 disabled:opacity-50"
           >
             {t.game.endTurn}
           </button>
