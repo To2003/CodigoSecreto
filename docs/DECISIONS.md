@@ -187,3 +187,13 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
   6. La revancha se arma con quienes están en la sala (los que se fueron quedan afuera, los que entraron a mitad juegan como espectadores) y exige jefe y agente conectados por equipo. Para empezar también se exige que el jefe esté conectado y que haya al menos un agente conectado.
   7. Echar a alguien en partida le avisa al motor (presencia), para que el modo mayoría y las votaciones no lo esperen.
 - **Si se quiere replay**: guardar en el server una seed de 256 bits para un DRBG, que nunca salga del server. Queda en el backlog.
+
+## ADR-023 — Arte, layout y accesibilidad (M4)
+
+- **Estado**: Aceptada (2026-11-10, M4, modo autónomo)
+- **Fuentes empaquetadas**: Oswald, Special Elite e Inter salen del bundle vía Fontsource (OFL / Apache-2.0), no de Google Fonts en runtime: sin terceros, sin layout shift por red lenta y funciona offline. Licencias en `apps/web/src/art/LICENSES.md`.
+- **Arte en código**: avatares, dorsos y sellos son SVG en componentes; la textura de papel es ruido SVG inline en CSS. Cero imágenes.
+- **Contraste AA vs. paleta del SPEC**: el rojo `#D6453D` y el azul `#2F6FB3` del SPEC no llegan a 4,5:1 como texto sobre el fondo oscuro ni con texto papel encima. Se agregan variantes `-ink` (texto de color sobre fondo oscuro) y `-deep` (fondos de color con texto papel), calculadas para ≥ 4,5:1 también en la paleta daltónica. Los tokens del SPEC quedan para bandas, ilustraciones y bordes (SPEC §5.2 pide "Contraste AA en todos los textos").
+- **Modo daltónico**: paleta Okabe–Ito (naranja `#C75A00` / azul `#0072B2`), íconos ▲ ● ■ ✕ en la vista de jefe y en los contadores, y tramas (rayas para rojo, puntos para azul) en bandas, solapas y dorsos.
+- **Mobile**: la zona de acción es una hoja fija abajo; equipos e historial en un panel con pestañas; el primer toque señala y el segundo sobre la misma carta la da vuelta (también queda el ✓).
+- **Lighthouse**: queda para M8 (se mide contra el build en preview); M4 cubre accesibilidad con axe en los E2E.
