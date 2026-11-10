@@ -146,3 +146,20 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 12. **Mezcla con palabras custom** (§7): si hay mazos y palabras custom, `customShare` (0–100, default 50) es el porcentaje de las 25 que sale de las custom (hasta donde alcancen). Sin mazos, hacen falta ≥ 25 custom.
 13. **Mínimo para arrancar** (§1.2): modo clásico, cada equipo con exactamente 1 jefe y al menos 1 agente (→ 4 jugadores mínimo). Cooperativo devuelve error hasta M9.
 14. **Errores del motor**: código tipado (`WRONG_PHASE`, `NOT_YOUR_TURN`, …) sin texto. El texto en castellano rioplatense lo ponen el server y la web según el código.
+
+## ADR-019 — `room:patch` lleva la vista filtrada completa
+
+- **Estado**: Aceptada (2026-11-10, M2)
+- **Contexto**: SPEC §2.2 pide `room:patch` con "diff + lista de eventos" y `seq` incremental.
+- **Decisión**: el patch manda `{ seq, view, events }`: la vista completa ya filtrada para ese jugador (unos pocos KB) en lugar de un diff JSON. Los eventos siguen siendo la lista para animar, y el `seq` detecta saltos (el cliente pide el estado de nuevo con `room:join` + token).
+- **Por qué**: un diff agrega una clase entera de bugs (orden, parches perdidos, merge en el cliente) para ahorrar bytes que no importan con ≤ 16 jugadores. Y cada vista pasa por el mismo filtro que `room:state`, lo que simplifica la garantía anti-trampa de M3.
+
+## ADR-020 — Detalles de salas resueltos en M2
+
+- **Estado**: Aceptada (2026-11-10, M2, modo autónomo)
+- **Equipo al entrar**: en el lobby, el que entra va como agente al equipo con menos jugadores; si hay partida en curso, entra como espectador.
+- **Token inválido**: si el `playerId` existe pero el token no coincide, se le da un lugar nuevo (no se rechaza): es el caso típico de un token viejo.
+- **Echar ≠ banear**: el SPEC no pide ban; un jugador echado puede volver a entrar con el código como jugador nuevo.
+- **Sala vacía**: se borra 30 min después de que no quede nadie conectado, contando desde la creación si nunca entró nadie. El lugar de un desconectado se libera a los 60 s solo en el lobby (durante la partida se decide en M3).
+- **Sortear**: equipos balanceados al azar y un jefe al azar en cada uno; los espectadores no se tocan.
+- **E2E desde M2**: Playwright se instala en M2 (CONSTRAINTS lo ponía en M3) porque es la única forma de verificar los criterios de M2 con 4 pestañas.
