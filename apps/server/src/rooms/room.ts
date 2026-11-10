@@ -53,12 +53,15 @@ export class Room {
   scoreboard: Record<Team, number> = { red: 0, blue: 0 };
   /** Incremented on every broadcast so clients can detect a missed patch (SPEC §2.2). */
   seq = 0;
-  emptySince: number | null = null;
+  /** When the last connected player left; a new room counts as empty from its creation. */
+  emptySince: number | null;
 
   constructor(
     readonly code: string,
     readonly createdAt: number,
-  ) {}
+  ) {
+    this.emptySince = createdAt;
+  }
 
   private player(id: string): RoomPlayer {
     const p = this.players.find((x) => x.id === id);
@@ -132,9 +135,11 @@ export class Room {
     return events;
   }
 
-  leave(playerId: string): RoomEvent[] {
+  leave(playerId: string, now: number): RoomEvent[] {
     this.player(playerId);
-    return this.remove(playerId, { type: 'PLAYER_LEFT', playerId });
+    const events = this.remove(playerId, { type: 'PLAYER_LEFT', playerId });
+    this.updateEmptySince(now);
+    return events;
   }
 
   kick(by: string, target: string): RoomEvent[] {

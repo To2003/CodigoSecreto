@@ -160,7 +160,7 @@ describe('leaving and host handover', () => {
   it('passes host to the oldest connected player when the host leaves', () => {
     const [a, b, c] = fourPlayers();
     room.setConnected(b ?? '', false, 0);
-    expect(room.leave(a ?? '')).toEqual([
+    expect(room.leave(a ?? '', 0)).toEqual([
       { type: 'PLAYER_LEFT', playerId: a },
       { type: 'HOST_CHANGED', playerId: c },
     ]);
@@ -170,7 +170,7 @@ describe('leaving and host handover', () => {
   it('falls back to the oldest player when nobody is connected', () => {
     const [a, b] = fourPlayers();
     for (const p of room.players) room.setConnected(p.id, false, 0);
-    room.leave(a ?? '');
+    room.leave(a ?? '', 0);
     expect(room.hostId).toBe(b);
   });
 
@@ -186,6 +186,7 @@ describe('leaving and host handover', () => {
   });
 
   it('knows how long it has been empty', () => {
+    expect(room.emptySince).toBe(0); // empty since creation
     const [a] = fourPlayers();
     expect(room.emptySince).toBeNull();
     for (const p of room.players) room.setConnected(p.id, false, 5_000);

@@ -1,5 +1,5 @@
 import type { GameEvent, PlayerTeam, Role, Team } from '../engine/types';
-import type { AvatarColor } from '../schemas/events';
+import type { AvatarColor, ClientEventName, ClientPayload } from '../schemas/events';
 import type { Settings } from '../schemas/settings';
 
 /** What every client sees about a player. Tokens never leave the server. */
@@ -64,7 +64,8 @@ export type ErrorCode =
   | 'SPYMASTER_TAKEN'
   | 'PLAYER_NOT_FOUND'
   | 'CANNOT_KICK_SELF'
-  | 'LOBBY_ONLY';
+  | 'LOBBY_ONLY'
+  | 'INTERNAL';
 
 export interface ErrorPayload {
   code: ErrorCode;
@@ -73,3 +74,21 @@ export interface ErrorPayload {
 
 export type Ack<T extends object = object> =
   ({ ok: true } & T) | { ok: false; error: ErrorPayload };
+
+/** What each client event's ack carries on success. */
+export interface AckData {
+  'room:create': { roomCode: string; playerId: string; token: string };
+  'room:join': { roomCode: string; playerId: string; token: string };
+}
+type AckFor<E extends ClientEventName> = E extends keyof AckData ? Ack<AckData[E]> : Ack;
+
+/** Socket.IO typing for both ends (SPEC §2.2). */
+export type ClientToServerEvents = {
+  [E in ClientEventName]: (payload: ClientPayload<E>, ack: (res: AckFor<E>) => void) => void;
+};
+
+export interface ServerToClientEvents {
+  'room:state': (state: { seq: number; view: RoomView }) => void;
+  'room:patch': (patch: RoomPatch) => void;
+  'room:kicked': () => void;
+}
