@@ -55,7 +55,13 @@ test('four players play a full game to the end, then a rematch rotates spymaster
       await reveal(agent[active].page, word);
     }
     const end = agent[active].page.getByRole('button', { name: 'Pasar turno' });
-    if (await end.isVisible()) await end.click();
+    if (await end.isVisible()) {
+      await end.click();
+      // Wait for the turn to reach Ana's page before reading it again on the next lap.
+      await expect(ana.page.getByTestId('turn-banner')).toContainText(
+        active === 'red' ? 'Azul' : 'Rojo',
+      );
+    }
   }
 
   for (const p of [ana, beto, caro, dani]) {
