@@ -9,3 +9,10 @@ El arte (cartas, dorsos, avatares, sellos, textura de papel) está hecho en cód
 | Oswald (variable) | Palabras de las cartas | SIL Open Font License 1.1 | `@fontsource-variable/oswald` |
 | Special Elite     | Logo, sellos, títulos  | Apache License 2.0        | `@fontsource/special-elite`   |
 | Inter (variable)  | Interfaz               | SIL Open Font License 1.1 | `@fontsource-variable/inter`  |
+
+## Librerías de animación
+
+| Librería          | Uso                                   | Licencia |
+| ----------------- | ------------------------------------- | -------- |
+| Motion (`motion`) | Animaciones de layout del lobby       | MIT      |
+| canvas-confetti   | Confetti de victoria (carga diferida) | ISC      |

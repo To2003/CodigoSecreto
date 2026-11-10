@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import './animations/animations.css';
 
 /* Design tokens (SPEC §5.2). */
 :root {
@@ -114,19 +115,4 @@ body {
 :focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}
-:root[data-reduce-motion='true'] *,
-:root[data-reduce-motion='true'] *::before,
-:root[data-reduce-motion='true'] *::after {
-  transition-duration: 0.01ms !important;
-  animation-duration: 0.01ms !important;
 }

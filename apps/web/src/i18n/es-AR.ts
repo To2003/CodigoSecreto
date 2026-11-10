@@ -112,6 +112,7 @@ export const t = {
     shortTeam: { red: 'Rojo', blue: 'Azul' } satisfies Record<Team, string>,
     paused: 'En pausa',
     clueLine: (word: string, c: ClueCount) => `${word} · ${c === 'inf' ? '∞' : String(c)}`,
+    clueSeparator: ' · ',
     count: (c: ClueCount) => (c === 'inf' ? '∞' : String(c)),
     yourTurnSpymaster: 'Te toca, jefe. Pensá una pista que conecte tus palabras.',
     clueLabel: 'Tu pista',

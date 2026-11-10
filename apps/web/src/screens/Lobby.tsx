@@ -1,4 +1,5 @@
 import { TEAMS, type PublicPlayer, type RoomView, type Team } from '@clave/shared';
+import { LayoutGroup, motion } from 'motion/react';
 import { useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { ConnectionIndicator } from '../components/ConnectionIndicator';
@@ -25,7 +26,16 @@ function PlayerRow({ player, view }: { player: PublicPlayer; view: RoomView }) {
     !player.connected && t.lobby.disconnected,
   ].filter(Boolean);
   return (
-    <li className="flex items-center gap-2 py-1" data-player={player.nickname}>
+    // Joining slides in; changing team, the row travels to the other column (SPEC §4 lobby).
+    <motion.li
+      layout
+      layoutId={player.id}
+      initial={{ opacity: 0, transform: 'translateX(-12px)' }}
+      animate={{ opacity: 1, transform: 'translateX(0px)' }}
+      transition={{ type: 'spring', duration: 0.45, bounce: 0.15 }}
+      className="flex items-center gap-2 py-1"
+      data-player={player.nickname}
+    >
       <Avatar avatar={player.avatar} color={player.color} size={28} dimmed={!player.connected} />
       <span className={player.connected ? '' : 'text-paper/60'}>{player.nickname}</span>
       {tags.length > 0 && <span className="text-xs text-paper/60">({tags.join(', ')})</span>}
@@ -39,7 +49,7 @@ function PlayerRow({ player, view }: { player: PublicPlayer; view: RoomView }) {
           {t.lobby.kickIcon}
         </button>
       )}
-    </li>
+    </motion.li>
   );
 }
 
@@ -157,129 +167,131 @@ export function Lobby({ view }: { view: RoomView }) {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-5xl flex-col gap-6 px-4 py-6">
-      <header className="flex flex-wrap items-center gap-3">
-        <h1 className="font-stamp text-3xl tracking-wider sm:text-4xl">
-          {t.lobby.title(view.code)}
-        </h1>
-        <button
-          type="button"
-          className="rounded-md border border-paper/40 px-3 py-1 text-sm active:scale-97"
-          onClick={() => void copy()}
-        >
-          {copied ? t.lobby.copied : t.lobby.copyLink}
-        </button>
-        {'share' in navigator && (
+    <LayoutGroup>
+      <main className="mx-auto flex min-h-dvh max-w-5xl flex-col gap-6 px-4 py-6">
+        <header className="flex flex-wrap items-center gap-3">
+          <h1 className="font-stamp text-3xl tracking-wider sm:text-4xl">
+            {t.lobby.title(view.code)}
+          </h1>
           <button
             type="button"
             className="rounded-md border border-paper/40 px-3 py-1 text-sm active:scale-97"
-            onClick={() => {
-              navigator
-                .share({ text: t.lobby.shareText(view.code), url: link })
-                .catch(() => undefined);
-            }}
+            onClick={() => void copy()}
           >
-            {t.lobby.share}
+            {copied ? t.lobby.copied : t.lobby.copyLink}
           </button>
-        )}
-        <div className="ml-auto flex items-center gap-3">
-          <SettingsButton />
-          <ConnectionIndicator />
-        </div>
-      </header>
-
-      {error && (
-        <p role="alert" className="text-red-soft">
-          {error}
-        </p>
-      )}
-
-      <div className="grid gap-4 md:grid-cols-2">
-        {TEAMS.map((team) => (
-          <TeamColumn key={team} team={team} view={view} act={act} />
-        ))}
-      </div>
-
-      <section
-        aria-label={t.lobby.spectators}
-        data-team="spectator"
-        className="rounded-lg bg-surface p-4"
-      >
-        <div className="flex items-center gap-3">
-          <h2 className="font-semibold">{t.lobby.spectators}</h2>
-          {you?.team !== 'spectator' && (
+          {'share' in navigator && (
             <button
               type="button"
               className="rounded-md border border-paper/40 px-3 py-1 text-sm active:scale-97"
               onClick={() => {
-                act(setTeam('spectator'));
+                navigator
+                  .share({ text: t.lobby.shareText(view.code), url: link })
+                  .catch(() => undefined);
               }}
             >
-              {t.lobby.watch}
+              {t.lobby.share}
             </button>
           )}
-        </div>
-        {spectators.length > 0 ? (
-          <ul>
-            {spectators.map((p) => (
-              <PlayerRow key={p.id} player={p} view={view} />
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-paper/60">{t.lobby.noSpectators}</p>
-        )}
-      </section>
+          <div className="ml-auto flex items-center gap-3">
+            <SettingsButton />
+            <ConnectionIndicator />
+          </div>
+        </header>
 
-      <section className="flex flex-col gap-3 rounded-lg bg-surface p-4">
-        {view.startBlockers.length > 0 ? (
-          <ul id="start-blockers" className="text-sm text-paper/80">
-            {view.startBlockers.map((b) => (
-              <li key={JSON.stringify(b)}>{t.lobby.blocker(b, names)}</li>
-            ))}
-          </ul>
-        ) : (
-          <p id="start-blockers">{isHost ? t.lobby.ready : t.lobby.waitingHost}</p>
+        {error && (
+          <p role="alert" className="text-red-soft">
+            {error}
+          </p>
         )}
-        <div className="flex flex-wrap gap-2">
-          {isHost && (
-            <>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {TEAMS.map((team) => (
+            <TeamColumn key={team} team={team} view={view} act={act} />
+          ))}
+        </div>
+
+        <section
+          aria-label={t.lobby.spectators}
+          data-team="spectator"
+          className="rounded-lg bg-surface p-4"
+        >
+          <div className="flex items-center gap-3">
+            <h2 className="font-semibold">{t.lobby.spectators}</h2>
+            {you?.team !== 'spectator' && (
               <button
                 type="button"
-                disabled={view.startBlockers.length > 0}
-                aria-describedby="start-blockers"
+                className="rounded-md border border-paper/40 px-3 py-1 text-sm active:scale-97"
                 onClick={() => {
-                  act(startGame());
-                }}
-                className="rounded-md bg-accent px-4 py-2 font-semibold text-ink disabled:opacity-50"
-              >
-                {t.lobby.start}
-              </button>
-              <button
-                type="button"
-                className="rounded-md border border-paper/40 px-3 py-2 text-sm active:scale-97"
-                onClick={() => {
-                  act(randomizeTeams());
+                  act(setTeam('spectator'));
                 }}
               >
-                {t.lobby.randomize}
+                {t.lobby.watch}
               </button>
-            </>
+            )}
+          </div>
+          {spectators.length > 0 ? (
+            <ul>
+              {spectators.map((p) => (
+                <PlayerRow key={p.id} player={p} view={view} />
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-paper/60">{t.lobby.noSpectators}</p>
           )}
-          <button
-            type="button"
-            className="ml-auto rounded-md px-3 py-2 text-sm text-paper/70 underline"
-            onClick={() => {
-              void leaveRoom().then(() => {
-                navigate('/');
-              });
-            }}
-          >
-            {t.lobby.leave}
-          </button>
-        </div>
-      </section>
+        </section>
 
-      <SettingsPanel view={view} editable={isHost} onError={setError} />
-    </main>
+        <section className="flex flex-col gap-3 rounded-lg bg-surface p-4">
+          {view.startBlockers.length > 0 ? (
+            <ul id="start-blockers" className="text-sm text-paper/80">
+              {view.startBlockers.map((b) => (
+                <li key={JSON.stringify(b)}>{t.lobby.blocker(b, names)}</li>
+              ))}
+            </ul>
+          ) : (
+            <p id="start-blockers">{isHost ? t.lobby.ready : t.lobby.waitingHost}</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {isHost && (
+              <>
+                <button
+                  type="button"
+                  disabled={view.startBlockers.length > 0}
+                  aria-describedby="start-blockers"
+                  onClick={() => {
+                    act(startGame());
+                  }}
+                  className="rounded-md bg-accent px-4 py-2 font-semibold text-ink disabled:opacity-50"
+                >
+                  {t.lobby.start}
+                </button>
+                <button
+                  type="button"
+                  className="rounded-md border border-paper/40 px-3 py-2 text-sm active:scale-97"
+                  onClick={() => {
+                    act(randomizeTeams());
+                  }}
+                >
+                  {t.lobby.randomize}
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              className="ml-auto rounded-md px-3 py-2 text-sm text-paper/70 underline"
+              onClick={() => {
+                void leaveRoom().then(() => {
+                  navigate('/');
+                });
+              }}
+            >
+              {t.lobby.leave}
+            </button>
+          </div>
+        </section>
+
+        <SettingsPanel view={view} editable={isHost} onError={setError} />
+      </main>
+    </LayoutGroup>
   );
 }

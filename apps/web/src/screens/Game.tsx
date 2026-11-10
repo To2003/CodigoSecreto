@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ConnectionIndicator } from '../components/ConnectionIndicator';
 import { ActionZone } from '../components/game/ActionZone';
 import { Board } from '../components/game/Board';
+import { GameEffects } from '../components/game/GameEffects';
 import { GameOverPanel } from '../components/game/GameOverPanel';
 import { PauseOverlay } from '../components/game/PauseOverlay';
 import { TeamPanel } from '../components/game/TeamPanel';
@@ -77,7 +78,12 @@ function Counter({ view, team, name }: { view: RoomView; team: Team; name: strin
       <span aria-hidden="true" className="hidden sm:inline">
         {name}
       </span>
-      <span aria-hidden="true" className="font-stamp text-xl leading-none">
+      {/* Rolling number: remounts on change so the roll plays once (SPEC §4). */}
+      <span
+        key={left}
+        aria-hidden="true"
+        className="anim-roll anim-move font-stamp text-xl leading-none"
+      >
         {left}
       </span>
     </span>
@@ -155,6 +161,7 @@ function TeamsSheet({ view, teamName }: { view: RoomView; teamName: (team: Team)
 export function Game({ view }: { view: RoomView }) {
   const game = view.game;
   const events = useRoom((s) => s.lastEvents);
+  const seq = useRoom((s) => s.seq);
   const [viewAsAgent, setViewAsAgent] = useState(false);
   const sheetRef = useRef<HTMLElement>(null);
   const [sheetHeight, setSheetHeight] = useState(0);
@@ -177,10 +184,11 @@ export function Game({ view }: { view: RoomView }) {
     .filter(Boolean)
     .join(' ');
   const over = game.phase.name === 'over';
+  const traitorShake = events.some((e) => e.type === 'CARD_REVEALED' && e.cardType === 'traitor');
 
   return (
     <main
-      className="mx-auto flex min-h-dvh max-w-7xl flex-col gap-3 px-3 pt-3 pb-(--sheet) lg:gap-4 lg:px-5 lg:pb-6"
+      className={`mx-auto flex min-h-dvh max-w-7xl flex-col gap-3 px-3 pt-3 pb-(--sheet) lg:gap-4 lg:px-5 lg:pb-6 ${traitorShake ? 'anim-screen-shake anim-move' : ''}`}
       style={{ '--sheet': `${Math.ceil(sheetHeight) + 16}px` } as React.CSSProperties}
     >
       <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
@@ -233,6 +241,7 @@ export function Game({ view }: { view: RoomView }) {
         <TeamPanel view={view} team="blue" name={teamName('blue')} className="hidden lg:flex" />
       </div>
       <PauseOverlay view={view} teamName={teamName} />
+      <GameEffects game={game} events={events} seq={seq} />
     </main>
   );
 }

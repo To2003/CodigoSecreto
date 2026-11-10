@@ -1,0 +1,289 @@
+/*
+ * Motion for "Clave" (SPEC §4). Only transform and opacity; predetermined animations are CSS so
+ * they run off the main thread. Every class that moves things also carries .anim-move, and
+ * reduced motion (system setting or "Ajustes") turns those off, leaving short fades.
+ */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Press feedback on every enabled button (uses `scale`, independent of `transform`). */
+button:not(:disabled) {
+  transition:
+    scale 160ms var(--ease-out),
+    translate 160ms var(--ease-out);
+}
+button:not(:disabled):active {
+  scale: 0.97;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Board entrance: diagonal cascade, 30 ms per step. */
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.anim-card-in {
+  animation: card-in 320ms var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 30ms);
+}
+
+/* Reveal: 3D flip in Y, 600 ms. */
+@keyframes flip {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(180deg);
+  }
+}
+.anim-flip {
+  transform-style: preserve-3d;
+  animation: flip 600ms var(--ease-in-out) both;
+}
+.face {
+  backface-visibility: hidden;
+}
+.face-back {
+  transform: rotateY(180deg);
+}
+
+/* Own agent: a glow and a few particles once the card has turned. */
+@keyframes glow {
+  0% {
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.anim-glow {
+  animation: glow 900ms var(--ease-out) 550ms both;
+}
+@keyframes particle {
+  from {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) scale(0.4);
+  }
+}
+.anim-particle {
+  animation: particle 700ms var(--ease-out) 550ms both;
+}
+
+/* Civilian: a soft grey veil (desaturation without animating filters). */
+.anim-veil {
+  animation: fade-in 500ms ease 600ms both;
+}
+
+/* Rival agent: the card shakes; the screen edge flashes in the rival's color. */
+@keyframes shake-x {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-4px);
+  }
+  40% {
+    transform: translateX(4px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(2px);
+  }
+}
+.anim-shake {
+  animation: shake-x 360ms ease-in-out 600ms both;
+}
+@keyframes edge-flash {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.anim-edge-flash {
+  animation: edge-flash 800ms ease-out 550ms both;
+}
+
+/* Traitor: vignette, a 400 ms screen shake, the card big in the middle. */
+.anim-vignette {
+  animation: fade-in 500ms ease-out 550ms both;
+}
+@keyframes screen-shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  15% {
+    transform: translate(-6px, 3px);
+  }
+  30% {
+    transform: translate(5px, -4px);
+  }
+  45% {
+    transform: translate(-4px, -2px);
+  }
+  60% {
+    transform: translate(4px, 3px);
+  }
+  80% {
+    transform: translate(-2px, 1px);
+  }
+}
+.anim-screen-shake {
+  animation: screen-shake 400ms linear 600ms both;
+}
+@keyframes traitor-zoom {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  20%,
+  80% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
+.anim-traitor-zoom {
+  animation: traitor-zoom 1800ms var(--ease-out) 600ms both;
+}
+
+/* Pointing: the avatar drops onto the card with a little bounce. */
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anim-drop {
+  animation: drop-in 380ms var(--ease-spring) both;
+}
+
+/* New clue: typewriter letters (40 ms each) and a pop for the number. */
+@keyframes letter-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.anim-letter {
+  animation: letter-in 1ms steps(1, end) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.anim-pop {
+  display: inline-block;
+  animation: pop 320ms var(--ease-spring) both;
+  animation-delay: var(--d, 0ms);
+}
+
+/* Turn change: the stamp sweeps across the screen in the team color (700 ms). */
+@keyframes sweep {
+  0% {
+    transform: translateX(-110%);
+  }
+  35%,
+  65% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(110%);
+  }
+}
+.anim-sweep {
+  animation: sweep 700ms var(--ease-in-out) both;
+}
+
+/* Counters roll to the new number. */
+@keyframes roll-in {
+  from {
+    opacity: 0;
+    transform: translateY(-60%);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.anim-roll {
+  display: inline-block;
+  animation: roll-in 300ms var(--ease-out) both;
+}
+
+/* Game over: the rest of the key map shows up in a cascade. */
+.anim-map-in {
+  animation: fade-in 300ms ease-out both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+
+/* Reduced motion (SPEC §4): no flips, shakes, sweeps or bounces; short fades instead. */
+:root[data-motion='reduce'] .anim-move {
+  animation: fade-in 150ms ease-out both !important;
+}
+:root[data-motion='reduce'] .anim-letter,
+:root[data-motion='reduce'] .anim-map-in {
+  animation-delay: 0ms !important;
+}
+:root[data-motion='reduce'] button:not(:disabled):active {
+  scale: 1;
+}

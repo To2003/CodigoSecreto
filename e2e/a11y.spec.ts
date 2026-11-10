@@ -4,6 +4,12 @@ import { createRoom, newPlayer, startGame } from './helpers';
 
 /** CONSTRAINTS.md: zero critical or serious axe violations (WCAG 2.1 A/AA, contrast included). */
 async function expectAccessible(page: Page, label: string) {
+  // Audit the settled UI: a card mid-flip briefly shows its word on both faces.
+  await page.waitForFunction(
+    () => document.getAnimations().every((a) => a.playState !== 'running'),
+    undefined,
+    { timeout: 5000 },
+  );
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze();

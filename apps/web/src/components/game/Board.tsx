@@ -1,8 +1,10 @@
-import type { CardType, PublicCard, RoomView } from '@clave/shared';
-import { useEffect, useState } from 'react';
+import type { CardType, PublicCard, PublicPlayer, RoomEvent, RoomView } from '@clave/shared';
+import { memo, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { CardArt } from '../../art/CardArt';
 import { t } from '../../i18n/es-AR';
 import { pointCard, revealCard } from '../../net/client';
+import { useReducedMotion } from '../../store/prefs';
+import { useRoom } from '../../store/room';
 import { Avatar } from '../Avatar';
 import { FitText } from './FitText';
 
@@ -31,6 +33,58 @@ const ARM_MS = 3000;
 
 const coarsePointer = () => window.matchMedia('(pointer: coarse)').matches;
 
+/** How a reveal landed for the team that made it (SPEC §4 reveal table). */
+export type RevealKind = 'own' | 'civilian' | 'rival' | 'traitor' | 'penalty';
+
+function revealKinds(events: RoomEvent[]): Map<string, RevealKind> {
+  const kinds = new Map<string, RevealKind>();
+  for (const e of events) {
+    if (e.type !== 'CARD_REVEALED') continue;
+    const kind: RevealKind = e.penalty
+      ? 'penalty'
+      : e.cardType === e.team
+        ? 'own'
+        : e.cardType === 'civilian' || e.cardType === 'traitor'
+          ? e.cardType
+          : 'rival';
+    kinds.set(e.cardId, kind);
+  }
+  return kinds;
+}
+
+/** Six specks that burst from the card's center (transform and opacity only). */
+const PARTICLES = [
+  [-28, -18],
+  [26, -20],
+  [-34, 6],
+  [34, 8],
+  [-12, 22],
+  [14, 24],
+] as const;
+
+function RevealEffects({ kind, type }: { kind: RevealKind; type: CardType }) {
+  if (kind === 'own') {
+    const color = type === 'red' ? 'bg-red' : 'bg-blue';
+    return (
+      <>
+        <span
+          aria-hidden="true"
+          className={`anim-glow anim-move pointer-events-none absolute -inset-1.5 rounded-[14px] opacity-0 blur-md ${color}`}
+        />
+        {PARTICLES.map(([dx, dy]) => (
+          <span
+            key={`${dx},${dy}`}
+            aria-hidden="true"
+            className="anim-particle anim-move pointer-events-none absolute top-1/2 left-1/2 size-1.5 rounded-full bg-accent"
+            style={{ '--dx': `${dx}px`, '--dy': `${dy}px` } as CSSProperties}
+          />
+        ))}
+      </>
+    );
+  }
+  return null;
+}
+
 function TypeIcon({ type, className = '' }: { type: CardType; className?: string }) {
   return (
     <span aria-hidden="true" className={`font-bold leading-none ${className}`}>
@@ -39,34 +93,67 @@ function TypeIcon({ type, className = '' }: { type: CardType; className?: string
   );
 }
 
-function Card({
-  card,
-  view,
-  showMap,
-  armed,
-  arm,
-}: {
+interface CardProps {
   card: PublicCard;
-  view: RoomView;
   showMap: boolean;
   armed: boolean;
   arm: (cardId: string | null) => void;
-}) {
-  const game = view.game;
-  if (!game) return null;
-  const me = view.players.find((p) => p.id === view.youId);
+  index: number;
+  kind: RevealKind | undefined;
+  /** This viewer is an agent of the team guessing right now (and the game isn't paused). */
+  canAct: boolean;
+  /** Reveals happen by direct click (not by majority). */
+  directReveal: boolean;
+  iPoint: boolean;
+  pointers: PublicPlayer[];
+  over: boolean;
+}
+
+/** Props compared by value: a patch rebuilds every object, but most cards don't change. */
+function sameCard(a: CardProps, b: CardProps): boolean {
+  return (
+    a.card.id === b.card.id &&
+    a.card.word === b.card.word &&
+    a.card.revealed === b.card.revealed &&
+    a.card.type === b.card.type &&
+    a.showMap === b.showMap &&
+    a.armed === b.armed &&
+    a.index === b.index &&
+    a.kind === b.kind &&
+    a.canAct === b.canAct &&
+    a.directReveal === b.directReveal &&
+    a.iPoint === b.iPoint &&
+    a.over === b.over &&
+    a.pointers.map((p) => `${p.id}:${p.avatar}:${p.color}:${p.nickname}`).join() ===
+      b.pointers.map((p) => `${p.id}:${p.avatar}:${p.color}:${p.nickname}`).join()
+  );
+}
+
+const Card = memo(function Card({
+  card,
+  showMap,
+  armed,
+  arm,
+  index,
+  kind,
+  canAct,
+  directReveal,
+  iPoint,
+  pointers,
+  over,
+}: CardProps) {
+  const reduced = useReducedMotion();
+  // Flip only when this card turns while on screen (not when the board loads already revealed).
+  const seenRevealed = useRef(card.revealed);
+  const [flipping, setFlipping] = useState(false);
+  useEffect(() => {
+    if (card.revealed && !seenRevealed.current && !reduced) setFlipping(true);
+    seenRevealed.current = card.revealed;
+  }, [card.revealed, reduced]);
   const type = card.revealed || showMap ? card.type : undefined;
-  const phase = game.phase;
-  const canPoint =
-    !card.revealed &&
-    !game.paused &&
-    phase.name === 'guess' &&
-    me?.team === phase.team &&
-    me.role === 'agent';
-  const iPoint = game.points[view.youId] === card.id;
-  const revealable = canPoint && view.settings.revealMode === 'any';
+  const canPoint = !card.revealed && canAct;
+  const revealable = canPoint && directReveal;
   const touchArmed = revealable && armed;
-  const pointers = view.players.filter((p) => game.points[p.id] === card.id);
   const describedBy = pointers.length > 0 ? `pointed-${card.id}` : undefined;
 
   const onClick = () => {
@@ -95,9 +182,44 @@ function Card({
         : t.game.point(card.word)
       : t.game.cardLabel(card.word, type ? t.game.cardType[type] : null, card.revealed);
 
+  const back = type ? (
+    <span className={`absolute inset-0 overflow-hidden rounded-[10px] ${REVEALED_BG[type]}`}>
+      <span className="absolute inset-0 opacity-90">
+        <CardArt type={type} id={card.id} />
+      </span>
+      {kind === 'civilian' && !reduced && (
+        <span aria-hidden="true" className="anim-veil absolute inset-0 bg-[#7f7a70]/35" />
+      )}
+      <span className="revealed-label absolute inset-x-0.5 bottom-0.5 rounded-sm bg-black/60 px-0.5 text-center text-paper">
+        <FitText text={card.word} className="font-card font-medium uppercase" />
+      </span>
+    </span>
+  ) : null;
+  const front = (
+    <span className="paper absolute inset-0 overflow-hidden rounded-[10px] text-ink">
+      {type && (
+        // At game over the rest of the map fades in as a cascade (SPEC §4 victory).
+        <span
+          className={`absolute inset-0 ${KEY_TINT[type]} ${over ? 'anim-map-in' : ''}`}
+          style={over ? ({ '--i': index } as CSSProperties) : undefined}
+        />
+      )}
+      {type && <span className={`absolute inset-y-0 left-0 w-1.5 sm:w-2 ${KEY_BAND[type]}`} />}
+      <span className="absolute inset-x-1 top-1/2 -translate-y-1/2 text-center sm:inset-x-2.5">
+        <FitText
+          text={card.word}
+          className={`font-card font-semibold tracking-wide uppercase ${type === 'traitor' ? 'text-paper' : ''}`}
+        />
+      </span>
+    </span>
+  );
+  const row = Math.floor(index / 5);
+  const col = index % 5;
+
   return (
     <div
-      className="relative"
+      className="anim-card-in anim-move relative"
+      style={{ '--i': row + col } as CSSProperties}
       data-card-id={card.id}
       data-word={card.word}
       data-revealed={card.revealed}
@@ -110,30 +232,33 @@ function Card({
         aria-label={label}
         aria-describedby={describedBy}
         onClick={onClick}
-        className={`relative block aspect-[3/2] w-full overflow-hidden rounded-[10px] text-left shadow-[0_2px_0_rgb(0_0_0/0.35)] transition-transform enabled:cursor-pointer enabled:hover:-translate-y-0.5 ${iPoint || touchArmed ? 'ring-4 ring-accent' : ''}`}
+        style={{ perspective: '700px' }}
+        className={`${kind === 'rival' && flipping ? 'anim-shake anim-move' : ''} relative block aspect-[3/2] w-full rounded-[10px] text-left shadow-[0_2px_0_rgb(0_0_0/0.35)] transition-transform enabled:cursor-pointer enabled:hover:-translate-y-0.5 ${iPoint || touchArmed ? 'ring-4 ring-accent' : ''}`}
       >
-        {card.revealed && type ? (
-          <span className={`absolute inset-0 ${REVEALED_BG[type]}`}>
-            <span className="absolute inset-0 opacity-90">
-              <CardArt type={type} id={card.id} />
+        {flipping && type ? (
+          // 3D flip (SPEC §4): the word face turns over onto the revealed face.
+          <span
+            className="anim-flip absolute inset-0"
+            onAnimationEnd={() => {
+              setFlipping(false);
+            }}
+          >
+            <span
+              aria-hidden="true"
+              className="face absolute inset-0 overflow-hidden rounded-[10px]"
+            >
+              {front}
             </span>
-            <span className="revealed-label absolute inset-x-0.5 bottom-0.5 rounded-sm bg-black/60 px-0.5 text-center text-paper">
-              <FitText text={card.word} className="font-card font-medium uppercase" />
+            <span className="face face-back absolute inset-0 overflow-hidden rounded-[10px]">
+              {back}
             </span>
+          </span>
+        ) : card.revealed && type ? (
+          <span className={`absolute inset-0 ${kind && !reduced ? '' : 'anim-map-in'}`}>
+            {back}
           </span>
         ) : (
-          <span className="paper absolute inset-0 text-ink">
-            {type && <span className={`absolute inset-0 ${KEY_TINT[type]}`} />}
-            {type && (
-              <span className={`absolute inset-y-0 left-0 w-1.5 sm:w-2 ${KEY_BAND[type]}`} />
-            )}
-            <span className="absolute inset-x-1 top-1/2 -translate-y-1/2 text-center sm:inset-x-2.5">
-              <FitText
-                text={card.word}
-                className={`font-card font-semibold tracking-wide uppercase ${type === 'traitor' ? 'text-paper' : ''}`}
-              />
-            </span>
-          </span>
+          front
         )}
       </button>
       {/* Decorations sit outside the button so its accessible name is just the word (WCAG 2.5.3). */}
@@ -153,6 +278,7 @@ function Card({
           className={`pointer-events-none absolute top-1 right-1.5 text-[0.65rem] sm:text-sm ${type === 'traitor' ? 'text-accent' : 'text-ink'}`}
         />
       )}
+      {kind && card.revealed && type && !reduced && <RevealEffects kind={kind} type={type} />}
       {touchArmed && (
         <span className="pointer-events-none absolute inset-x-0 -bottom-5 z-10 text-center text-[0.65rem] font-semibold text-accent">
           {t.game.tapAgain}
@@ -164,7 +290,9 @@ function Card({
             {t.game.pointedBy(pointers.map((p) => p.nickname))}
           </span>
           {pointers.map((p) => (
-            <Avatar key={p.id} avatar={p.avatar} color={p.color} size={22} />
+            <span key={p.id} className="anim-drop anim-move">
+              <Avatar avatar={p.avatar} color={p.color} size={22} />
+            </span>
           ))}
         </div>
       )}
@@ -183,11 +311,21 @@ function Card({
       )}
     </div>
   );
-}
+}, sameCard);
 
 export function Board({ view, showMap }: { view: RoomView; showMap: boolean }) {
   const cards = view.game?.cards ?? [];
   const [armed, setArmed] = useState<string | null>(null);
+  const kinds = revealKinds(useRoom((s) => s.lastEvents));
+  const game = view.game;
+  const me = view.players.find((p) => p.id === view.youId);
+  const phase = game?.phase;
+  const canAct =
+    !!game &&
+    !game.paused &&
+    phase?.name === 'guess' &&
+    me?.team === phase.team &&
+    me.role === 'agent';
 
   // An armed card disarms after ARM_MS; the next tap then just un-points it.
   useEffect(() => {
@@ -206,11 +344,17 @@ export function Board({ view, showMap }: { view: RoomView; showMap: boolean }) {
       role="group"
       aria-label={t.game.board}
     >
-      {cards.map((card) => (
+      {cards.map((card, index) => (
         <Card
           key={card.id}
+          index={index}
+          kind={kinds.get(card.id)}
+          canAct={canAct}
+          directReveal={view.settings.revealMode === 'any'}
+          iPoint={game?.points[view.youId] === card.id}
+          pointers={view.players.filter((p) => game?.points[p.id] === card.id)}
+          over={phase?.name === 'over'}
           card={card}
-          view={view}
           showMap={showMap}
           armed={armed === card.id}
           arm={setArmed}

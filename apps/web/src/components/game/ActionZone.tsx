@@ -1,9 +1,37 @@
-import { validateClue, type ClueCount, type RoomView, type Team } from '@clave/shared';
+import {
+  validateClue,
+  type ClueCount,
+  type ClueRecord,
+  type RoomView,
+  type Team,
+} from '@clave/shared';
+import type { CSSProperties } from 'react';
 import { useId, useState } from 'react';
 import { t } from '../../i18n/es-AR';
 import { endGuessing, giveClue } from '../../net/client';
 
 const COUNTS: ClueCount[] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 'inf'];
+
+/** The clue types itself in (40 ms per letter) and the number pops (SPEC §4). */
+function TypedClue({ clue }: { clue: ClueRecord }) {
+  const letters = Array.from(clue.word);
+  return (
+    <>
+      {letters.map((letter, i) => (
+        <span key={i} className="anim-letter" style={{ '--i': i } as CSSProperties}>
+          {letter}
+        </span>
+      ))}
+      {t.game.clueSeparator}
+      <span
+        className="anim-pop anim-move"
+        style={{ '--d': `${letters.length * 40}ms` } as CSSProperties}
+      >
+        {t.game.count(clue.count)}
+      </span>
+    </>
+  );
+}
 
 function ClueInput({ view }: { view: RoomView }) {
   const [word, setWord] = useState('');
@@ -129,7 +157,7 @@ export function ActionZone({
       <div className="flex flex-col gap-2">
         <p className="hidden text-lg sm:block">{t.game.yourTurnAgents(clueText)}</p>
         <p className="text-2xl font-bold tracking-wide sm:text-3xl" data-testid="current-clue">
-          {clueText}
+          {clue ? <TypedClue key={game.clues.length} clue={clue} /> : null}
         </p>
         <p className="text-sm text-paper/80">{t.game.guessesLeft(phase.guessesLeft)}</p>
         <p className="text-sm text-paper/70">

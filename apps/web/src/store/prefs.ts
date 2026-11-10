@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react';
 import { create } from 'zustand';
 
 /** Personal settings (SPEC §3.1 "Ajustes"). Persisted per browser; volumes join in M6. */
@@ -39,11 +40,15 @@ function load(): Prefs {
   }
 }
 
-/** Mirrors prefs onto <html> data attributes, which the CSS tokens read. */
+const reducedMotionQuery = () => window.matchMedia('(prefers-reduced-motion: reduce)');
+
+/** Mirrors prefs onto <html> data attributes, which the CSS tokens and animations read. */
 function apply(prefs: Prefs) {
   const root = document.documentElement;
   root.dataset.colorblind = String(prefs.colorBlind);
   root.dataset.reduceMotion = String(prefs.reduceMotion);
+  // Reduced motion = the system setting OR the "Ajustes" toggle (SPEC §4).
+  root.dataset.motion = prefs.reduceMotion || reducedMotionQuery().matches ? 'reduce' : 'full';
   root.dataset.cardText = prefs.cardText;
 }
 
@@ -62,4 +67,22 @@ export function setPrefs(patch: Partial<Prefs>) {
 
 export function initPrefs() {
   apply(usePrefs.getState());
+  reducedMotionQuery().addEventListener('change', () => {
+    apply(usePrefs.getState());
+  });
+}
+
+/** True when animations must be reduced: system setting or the "Ajustes" toggle. */
+export function useReducedMotion(): boolean {
+  const system = useSyncExternalStore(
+    (onChange) => {
+      const query = reducedMotionQuery();
+      query.addEventListener('change', onChange);
+      return () => {
+        query.removeEventListener('change', onChange);
+      };
+    },
+    () => reducedMotionQuery().matches,
+  );
+  return usePrefs((p) => p.reduceMotion) || system;
 }
