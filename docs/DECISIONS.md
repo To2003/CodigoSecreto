@@ -127,3 +127,22 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Cooperativo**: va en M9 (SPEC §12 manda sobre las menciones a M8 en §1.2 y §1.7).
 - **Assets**: sin descargas; sonido generado con Web Audio (M6) y arte SVG en código.
 - **Deploy (M8)**: se deja todo listo y documentado en `docs/DEPLOY.md`, sin crear cuentas ni deployar.
+
+## ADR-018 — Reglas ambiguas del SPEC resueltas para el motor (M1)
+
+- **Estado**: Aceptada (2026-11-10, modo autónomo; criterio: la opción más conservadora y literal del SPEC)
+
+1. **Objeción aceptada** (§1.6): se revela un agente no revelado del equipo que objetó (el rival del que dio la pista), elegido con el RNG de la partida. Si con eso completa sus agentes, gana. El turno pasa al equipo que objetó.
+2. **Quién vota la objeción**: los jugadores de los equipos Rojo y Azul, conectados al abrirse la votación, menos el jefe que dio la pista. Los espectadores no votan (§1.2: "no actúa"). El voto del jefe que objeta cuenta como "acepto".
+3. **Mayoría de la objeción**: se acepta solo si los votos "acepto" superan la mitad de los votantes habilitados. Empate o no votar = se rechaza (gana el statu quo). Se resuelve cuando votaron todos o cuando vence el timer de 15 s (`TIMER_EXPIRED`).
+4. **Cuándo se puede objetar**: solo el jefe rival, en fase de adivinanza, antes de la primera revelación de ese turno, y una sola vez por pista. Si se rechaza, la adivinanza sigue igual.
+5. **Plural básico** (§1.6): una palabra se compara también sin `s` o `es` final, solo si lo que queda tiene 3+ letras (así "MES" no se reduce a "ME"). La regla de "contener / estar contenida" usa esas mismas formas.
+6. **Palabras compuestas**: con la opción activa se permite un guion entre dos grupos de letras; se valida la palabra entera y cada parte.
+7. **Número de la pista**: 0–9 o `"inf"` (∞). Intentos: número + 1; con 0 o ∞, ilimitados. Hay que revelar al menos una carta antes de "Pasar turno".
+8. **Timer vencido**: en fase pista, el turno pasa al otro equipo sin pista; en adivinanza, termina el turno aunque no haya intentos.
+9. **Modo "Mayoría de su equipo"** (§1.7): la carta se revela cuando la señalan más de la mitad de los agentes **conectados** del equipo activo. En ese modo `REVEAL_CARD` directo no está permitido.
+10. **Señalar**: cada agente señala una carta a la vez (señalar otra mueve la marca; `null` la saca). Las marcas se borran al cambiar de turno.
+11. **Revancha** (§9): `REMATCH` arranca una partida nueva al toque con los mismos equipos, rotando jefes (el siguiente jugador del equipo en orden de llegada pasa a jefe), salvo `keepSpymasters`. Las palabras de la partida anterior se evitan. "Volver al lobby" es del server (descarta la partida). Lectura de la flecha `GAME_OVER → LOBBY (revancha)` del diagrama §1.8: la revancha pasa por el armado de lobby de forma instantánea.
+12. **Mezcla con palabras custom** (§7): si hay mazos y palabras custom, `customShare` (0–100, default 50) es el porcentaje de las 25 que sale de las custom (hasta donde alcancen). Sin mazos, hacen falta ≥ 25 custom.
+13. **Mínimo para arrancar** (§1.2): modo clásico, cada equipo con exactamente 1 jefe y al menos 1 agente (→ 4 jugadores mínimo). Cooperativo devuelve error hasta M9.
+14. **Errores del motor**: código tipado (`WRONG_PHASE`, `NOT_YOUR_TURN`, …) sin texto. El texto en castellano rioplatense lo ponen el server y la web según el código.
