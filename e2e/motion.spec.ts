@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
-import { startGame, type Player } from './helpers';
+import { startGame, type Player, closePlayers } from './helpers';
+
+test.afterEach(closePlayers);
 
 /**
  * M5 acceptance (SPEC §12): with reduced motion there are no flips or shakes; reveals stay at
@@ -27,10 +29,14 @@ async function prepareReveal(browser: Parameters<typeof startGame>[0]) {
   await spymaster.page.getByPlaceholder('Una sola palabra').fill('QXZ');
   await spymaster.page.getByRole('button', { name: '∞', exact: true }).click();
   await spymaster.page.getByRole('button', { name: 'Mandar pista' }).click();
-  const words = await spymaster.page
-    .locator(`[data-revealed="false"][data-type="${team}"]`)
-    .evaluateAll((els) => els.map((el) => el.getAttribute('data-word') ?? ''));
-  return { agent, words };
+  const wordsOf = (type: string) =>
+    spymaster.page
+      .locator(`[data-revealed="false"][data-type="${type}"]`)
+      .evaluateAll((els) => els.map((el) => el.getAttribute('data-word') ?? ''));
+  const words = await wordsOf(team);
+  const rivals = await wordsOf(team === 'red' ? 'blue' : 'red');
+  const traitors = await wordsOf('traitor');
+  return { agent, words, rivals, traitor: traitors[0] ?? '' };
 }
 
 /** Reveals a card and returns the names of every animation seen during the next 1.2 s. */
@@ -71,6 +77,53 @@ for (const how of ['system setting', 'Ajustes toggle'] as const) {
     await expect(agent.page.locator('.anim-flip')).toHaveCount(0);
   });
 }
+
+for (const how of ['system setting', 'Ajustes toggle'] as const) {
+  test(`reduced motion (${how}): a rival agent neither shakes nor sweeps`, async ({ browser }) => {
+    const { agent, rivals } = await prepareReveal(browser);
+    await reduceMotion(agent.page, how);
+    const seen = await animationsDuringReveal(agent, rivals[0] ?? '');
+    expect(seen.filter((name) => MOVING.includes(name))).toEqual([]);
+    await expect(agent.page.getByTestId('turn-sweep')).toHaveCount(0);
+  });
+
+  test(`reduced motion (${how}): the traitor has no shake, zoom or vignette`, async ({
+    browser,
+  }) => {
+    const { agent, traitor } = await prepareReveal(browser);
+    await reduceMotion(agent.page, how);
+    const seen = await animationsDuringReveal(agent, traitor);
+    expect(seen.filter((name) => MOVING.includes(name))).toEqual([]);
+    await expect(agent.page.getByTestId('traitor-moment')).toHaveCount(0);
+  });
+}
+
+test('full motion: the traitor moment plays and then clears the screen', async ({ browser }) => {
+  const { agent, traitor } = await prepareReveal(browser);
+  const seen = await animationsDuringReveal(agent, traitor);
+  expect(seen).toEqual(expect.arrayContaining(['flip', 'screen-shake', 'traitor-zoom']));
+  // The vignette and the big card go away on their own (they used to stay on screen).
+  await expect(agent.page.getByTestId('traitor-moment')).toHaveCount(0, { timeout: 5000 });
+});
+
+test('switching reduced motion on and off mid-game replays nothing', async ({ browser }) => {
+  const { agent, words } = await prepareReveal(browser);
+  await animationsDuringReveal(agent, words[0] ?? '');
+  await agent.page.waitForTimeout(1500);
+  const running = () =>
+    agent.page.evaluate(
+      () =>
+        document.getAnimations().filter((a) => 'animationName' in a && a.playState === 'running')
+          .length,
+    );
+  await reduceMotion(agent.page, 'Ajustes toggle');
+  expect(await running()).toBe(0);
+  await agent.page.getByRole('button', { name: 'Ajustes' }).click();
+  await agent.page.getByLabel('Reducir animaciones').uncheck();
+  await agent.page.getByRole('button', { name: 'Listo' }).click();
+  await expect(agent.page.locator('html')).toHaveAttribute('data-motion', 'full');
+  expect(await running()).toBe(0);
+});
 
 async function reduceMotion(page: Page, how: 'system setting' | 'Ajustes toggle') {
   if (how === 'system setting') {

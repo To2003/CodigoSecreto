@@ -1,7 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 import argento from '../packages/shared/words/argento.json' with { type: 'json' };
 import clasico from '../packages/shared/words/clasico.json' with { type: 'json' };
-import { startGame } from './helpers';
+import { startGame, closePlayers } from './helpers';
+
+test.afterEach(closePlayers);
 
 /**
  * M4 acceptance (SPEC §3.3): no word is ever cut. The 50 widest deck words (longest, then most

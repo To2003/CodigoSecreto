@@ -1,5 +1,7 @@
 import { devices, expect, test, type Page } from '@playwright/test';
-import { startGame, type Player } from './helpers';
+import { startGame, type Player, closePlayers } from './helpers';
+
+test.afterEach(closePlayers);
 
 type Team = 'red' | 'blue';
 

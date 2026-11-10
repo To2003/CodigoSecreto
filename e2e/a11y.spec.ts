@@ -1,6 +1,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { createRoom, newPlayer, startGame } from './helpers';
+import { createRoom, newPlayer, startGame, closePlayers } from './helpers';
+
+test.afterEach(closePlayers);
 
 /** CONSTRAINTS.md: zero critical or serious axe violations (WCAG 2.1 A/AA, contrast included). */
 async function expectAccessible(page: Page, label: string) {

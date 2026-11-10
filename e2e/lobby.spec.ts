@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
-import { createRoom, joinByLink, newPlayer, row, team } from './helpers';
+import { createRoom, joinByLink, newPlayer, row, team, closePlayers } from './helpers';
+
+test.afterEach(closePlayers);
 
 /** M2 acceptance (SPEC §12): 4 tabs build teams; F5 keeps the seat; team changes show in < 200 ms. */
 test('four players build teams, survive F5 and see changes fast', async ({ browser }) => {

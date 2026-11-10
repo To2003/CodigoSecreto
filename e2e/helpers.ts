@@ -1,6 +1,7 @@
 import {
   expect,
   type Browser,
+  type BrowserContext,
   type BrowserContextOptions,
   type Locator,
   type Page,
@@ -11,6 +12,9 @@ export interface Player {
   name: string;
 }
 
+/** Every context opened by the current test, closed by `closePlayers`. */
+const open = new Set<BrowserContext>();
+
 /** Each player gets its own browser context: separate storage, like separate devices. */
 export async function newPlayer(
   browser: Browser,
@@ -18,8 +22,19 @@ export async function newPlayer(
   options: BrowserContextOptions = {},
 ): Promise<Player> {
   const context = await browser.newContext(options);
+  open.add(context);
   const page = await context.newPage();
   return { page, name };
+}
+
+/**
+ * Closes every player opened by the test. Each spec runs it in `test.afterEach`: pages left open
+ * keep their sockets and audio running and slow down (or break) the tests after them.
+ */
+export async function closePlayers() {
+  const contexts = [...open];
+  open.clear();
+  await Promise.all(contexts.map((context) => context.close()));
 }
 
 async function fillProfile(page: Page, name: string) {

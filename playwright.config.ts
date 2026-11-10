@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 const CI = Boolean(process.env.CI);
 
-/** E2E (SPEC §10.1): real server + real web app, several browser contexts as different players. */
+/** E2E (SPEC §10.1): real server + the built web app, several browser contexts as different players. */
 export default defineConfig({
   testDir: 'e2e',
   timeout: 60_000,
@@ -23,9 +23,14 @@ export default defineConfig({
       env: { CLIENT_ORIGIN: 'http://localhost:5173', LOG_LEVEL: 'warn' },
     },
     {
-      command: 'pnpm --filter @clave/web dev',
+      // The production build, as it ships (ADR-026): dev React re-renders twice and adds checks,
+      // so frame budgets and timings measured on it say nothing about what players get.
+      command:
+        'pnpm --filter @clave/web build && pnpm --filter @clave/web preview --port 5173 --strictPort',
       url: 'http://localhost:5173',
       reuseExistingServer: !CI,
+      timeout: 120_000,
+      env: { VITE_SERVER_URL: 'http://localhost:3001' },
     },
   ],
 });
