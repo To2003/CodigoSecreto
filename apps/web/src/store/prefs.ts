@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { create } from 'zustand';
+import { audio, type Volumes } from '../audio/engine';
 
 /** Personal settings (SPEC §3.1 "Ajustes"). Persisted per browser; volumes join in M6. */
 export interface Prefs {
@@ -7,6 +8,8 @@ export interface Prefs {
   reduceMotion: boolean;
   cardText: 'sm' | 'md' | 'lg';
   vibration: boolean;
+  /** 0–1 per channel (SPEC §6.4). */
+  volumes: Volumes;
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -14,13 +17,25 @@ export const DEFAULT_PREFS: Prefs = {
   reduceMotion: false,
   cardText: 'md',
   vibration: true,
+  volumes: { master: 0.8, music: 0.4, effects: 0.8 },
 };
+
+/** Music starts off on phones, effects on (SPEC §6.3). */
+const defaultPrefs = (): Prefs => {
+  const phone = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+  return phone
+    ? { ...DEFAULT_PREFS, volumes: { ...DEFAULT_PREFS.volumes, music: 0 } }
+    : DEFAULT_PREFS;
+};
+
+const volume = (v: unknown, fallback: number) =>
+  typeof v === 'number' && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : fallback;
 
 const KEY = 'clave:prefs';
 
 /** Reads stored prefs, keeping only known keys with the right types. */
-export function parsePrefs(raw: unknown): Prefs {
-  const prefs = { ...DEFAULT_PREFS };
+export function parsePrefs(raw: unknown, defaults: Prefs = DEFAULT_PREFS): Prefs {
+  const prefs = { ...defaults, volumes: { ...defaults.volumes } };
   if (typeof raw !== 'object' || raw === null) return prefs;
   const r = raw as Record<string, unknown>;
   if (typeof r.colorBlind === 'boolean') prefs.colorBlind = r.colorBlind;
@@ -28,15 +43,23 @@ export function parsePrefs(raw: unknown): Prefs {
   if (typeof r.vibration === 'boolean') prefs.vibration = r.vibration;
   if (r.cardText === 'sm' || r.cardText === 'md' || r.cardText === 'lg')
     prefs.cardText = r.cardText;
+  if (typeof r.volumes === 'object' && r.volumes !== null) {
+    const v = r.volumes as Record<string, unknown>;
+    prefs.volumes = {
+      master: volume(v.master, prefs.volumes.master),
+      music: volume(v.music, prefs.volumes.music),
+      effects: volume(v.effects, prefs.volumes.effects),
+    };
+  }
   return prefs;
 }
 
 function load(): Prefs {
   try {
     const raw = window.localStorage.getItem(KEY);
-    return parsePrefs(raw === null ? null : JSON.parse(raw));
+    return parsePrefs(raw === null ? null : JSON.parse(raw), defaultPrefs());
   } catch {
-    return DEFAULT_PREFS;
+    return defaultPrefs();
   }
 }
 
@@ -50,6 +73,7 @@ function apply(prefs: Prefs) {
   // Reduced motion = the system setting OR the "Ajustes" toggle (SPEC §4).
   root.dataset.motion = prefs.reduceMotion || reducedMotionQuery().matches ? 'reduce' : 'full';
   root.dataset.cardText = prefs.cardText;
+  audio.setVolumes(prefs.volumes);
 }
 
 export const usePrefs = create<Prefs>()(() => load());

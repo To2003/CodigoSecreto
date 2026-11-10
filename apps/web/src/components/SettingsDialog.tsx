@@ -3,6 +3,7 @@ import { t } from '../i18n/es-AR';
 import { setPrefs, usePrefs, type Prefs } from '../store/prefs';
 
 const CARD_TEXT_SIZES: Prefs['cardText'][] = ['sm', 'md', 'lg'];
+const VOLUME_CHANNELS: (keyof Prefs['volumes'])[] = ['master', 'music', 'effects'];
 
 /** "Ajustes" (SPEC §3.1 #8) in a native <dialog>: focus trap and Esc come for free. */
 export function SettingsButton({ className = 'px-3 py-1 text-sm' }: { className?: string }) {
@@ -75,6 +76,30 @@ export function SettingsButton({ className = 'px-3 py-1 text-sm' }: { className?
                 </label>
               ))}
             </div>
+          </fieldset>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1">{t.prefs.sound}</legend>
+            {VOLUME_CHANNELS.map((channel) => (
+              <label
+                key={channel}
+                className="grid grid-cols-[7rem_1fr_3rem] items-center gap-2 text-sm"
+              >
+                {t.prefs.volumes[channel]}
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={prefs.volumes[channel]}
+                  onChange={(e) => {
+                    setPrefs({ volumes: { ...prefs.volumes, [channel]: Number(e.target.value) } });
+                  }}
+                />
+                <span className="text-right text-paper/80">
+                  {t.prefs.percent(prefs.volumes[channel])}
+                </span>
+              </label>
+            ))}
           </fieldset>
           <label className="flex items-start gap-3">
             <input

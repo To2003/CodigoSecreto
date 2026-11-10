@@ -5,6 +5,8 @@ import { navigate } from '../lib/router';
 import { loadProfile, loadSeat } from '../lib/storage';
 import { joinRoom } from '../net/client';
 import { useRoom } from '../store/room';
+import { useSoundCues } from '../audio/useSoundCues';
+import type { RoomView } from '@clave/shared';
 import { Game } from './Game';
 import { Lobby } from './Lobby';
 
@@ -32,7 +34,7 @@ export function RoomScreen({ code }: { code: string }) {
     });
   }, [code, view]);
 
-  if (view) return view.game ? <Game view={view} /> : <Lobby view={view} />;
+  if (view) return <InRoom view={view} />;
 
   if (exit === 'kicked' || exit === 'ROOM_NOT_FOUND') {
     return (
@@ -79,4 +81,10 @@ export function RoomScreen({ code }: { code: string }) {
       )}
     </main>
   );
+}
+
+/** In a room: sounds and music run for both the lobby and the game. */
+function InRoom({ view }: { view: RoomView }) {
+  useSoundCues(view);
+  return view.game ? <Game view={view} /> : <Lobby view={view} />;
 }

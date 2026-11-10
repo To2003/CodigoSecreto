@@ -10,6 +10,14 @@ describe('parsePrefs', () => {
     });
   });
 
+  it('clamps stored volumes and keeps defaults for missing channels', () => {
+    expect(parsePrefs({ volumes: { master: 2, music: -1, effects: 'loud' } }).volumes).toEqual({
+      master: 1,
+      music: 0,
+      effects: DEFAULT_PREFS.volumes.effects,
+    });
+  });
+
   it.each([null, 'x', 3, { cardText: 'xl' }])('falls back to defaults for %j', (raw) => {
     expect(parsePrefs(raw)).toEqual(DEFAULT_PREFS);
   });

@@ -214,6 +214,10 @@ export const t = {
     cardText: 'Tamaño del texto de las cartas',
     sizes: { sm: 'Chico', md: 'Normal', lg: 'Grande' },
     vibration: 'Vibrar en el celu cuando te toca',
+    sound: 'Sonido',
+    volumes: { master: 'Volumen general', music: 'Música', effects: 'Efectos' },
+    percent: (v: number) => `${Math.round(v * 100)}%`,
+    yourTurnTitle: '⚠ ¡Te toca!',
     close: 'Listo',
   },
   settings: {
