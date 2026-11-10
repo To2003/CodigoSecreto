@@ -3,7 +3,9 @@ import { LayoutGroup, m } from 'motion/react';
 import { useState } from 'react';
 import { Avatar } from '../components/Avatar';
 import { ConnectionIndicator } from '../components/ConnectionIndicator';
+import { RulesButton } from '../components/rules/RulesButton';
 import { SettingsButton } from '../components/SettingsDialog';
+import { TutorialChip } from '../components/TutorialChip';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { ChatPanel } from '../components/social/ChatPanel';
 import { EmoteLayer } from '../components/social/EmoteLayer';
@@ -197,10 +199,12 @@ export function Lobby({ view }: { view: RoomView }) {
             </button>
           )}
           <div className="ml-auto flex items-center gap-3">
+            <RulesButton className="px-3 py-1.5" />
             <SettingsButton />
             <ConnectionIndicator />
           </div>
         </header>
+        <TutorialChip />
 
         {error && (
           <p role="alert" className="text-red-soft">

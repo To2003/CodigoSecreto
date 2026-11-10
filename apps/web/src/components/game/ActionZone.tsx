@@ -10,6 +10,7 @@ import { useId, useState } from 'react';
 import { t } from '../../i18n/es-AR';
 import { endGuessing, giveClue } from '../../net/client';
 import { useRoom } from '../../store/room';
+import { Tip } from '../Tip';
 import { ObjectButton, ObjectionPanel } from './Objection';
 import { TimerRing } from './TimerRing';
 
@@ -78,6 +79,7 @@ function ClueInput({ view }: { view: RoomView }) {
       }}
     >
       <p className="font-semibold">{t.game.yourTurnSpymaster}</p>
+      <Tip id="clue" text={t.tips.clue} />
       <label htmlFor={`${id}-word`} className="sr-only">
         {t.game.clueLabel}
       </label>
@@ -188,6 +190,7 @@ function PhaseActions({ view, teamName }: { view: RoomView; teamName: (team: Tea
     return (
       <div className="flex flex-col gap-2">
         <p className="hidden text-lg sm:block">{t.game.yourTurnAgents(clueText)}</p>
+        <Tip id="point" text={t.tips.point} />
         {/* Screen readers get the clue whole; the letter-by-letter version is only visual. */}
         <p className="sr-only">{clueText}</p>
         <p

@@ -1,9 +1,14 @@
 import { LazyMotion, MotionConfig } from 'motion/react';
+import { lazy, Suspense } from 'react';
 import { t } from './i18n/es-AR';
 import { navigate, useRoute } from './lib/router';
 import { Landing } from './screens/Landing';
 import { RoomScreen } from './screens/RoomScreen';
 import { useReducedMotion } from './store/prefs';
+
+// Rules and tutorial are their own chunks (SPEC §10: lazy load).
+const Rules = lazy(() => import('./screens/Rules'));
+const Tutorial = lazy(() => import('./screens/Tutorial'));
 
 // Motion's features stay out of the initial bundle: the lobby rows animate once they arrive.
 const loadMotionFeatures = () => import('./animations/motionFeatures').then((m) => m.default);
@@ -27,6 +32,18 @@ function Screen() {
       return <Landing />;
     case 'room':
       return <RoomScreen key={route.code} code={route.code} />;
+    case 'rules':
+      return (
+        <Suspense fallback={null}>
+          <Rules />
+        </Suspense>
+      );
+    case 'tutorial':
+      return (
+        <Suspense fallback={null}>
+          <Tutorial />
+        </Suspense>
+      );
     case 'notFound':
       return (
         <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-4">

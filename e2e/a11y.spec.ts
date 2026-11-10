@@ -63,3 +63,28 @@ test('color-blind mode stays accessible', async ({ browser }) => {
   await expect(ana.page.locator('html')).toHaveAttribute('data-colorblind', 'true');
   await expectAccessible(ana.page, 'game (color-blind)');
 });
+
+test('rules, tutorial and the in-game rules modal have no serious violations', async ({
+  browser,
+}) => {
+  const { page } = await newPlayer(browser, 'Ana');
+  await page.goto('/reglas');
+  await expectAccessible(page, 'rules page');
+  await page.goto('/tutorial');
+  await expectAccessible(page, 'tutorial');
+  for (let i = 0; i < 5; i++) {
+    const next = page.getByRole('button', { name: 'Siguiente' });
+    if (await next.isDisabled()) {
+      for (const word of ['OLA', 'PEZ']) {
+        await page.getByRole('button', { name: word, exact: true }).click();
+      }
+    }
+    await next.click();
+  }
+  await expect(page.getByTestId('tutorial-step')).toHaveAttribute('data-step', 'spymaster');
+  await expectAccessible(page, 'tutorial as spymaster');
+
+  const game = await startGame(browser);
+  await game.caro.page.getByRole('button', { name: 'Reglas' }).click();
+  await expectAccessible(game.caro.page, 'rules modal');
+});

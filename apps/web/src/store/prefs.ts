@@ -8,6 +8,8 @@ export interface Prefs {
   reduceMotion: boolean;
   cardText: 'sm' | 'md' | 'lg';
   vibration: boolean;
+  /** First-time tips (SPEC §8.3), can be turned off. */
+  tips: boolean;
   /** 0–1 per channel (SPEC §6.4). */
   volumes: Volumes;
 }
@@ -17,6 +19,7 @@ export const DEFAULT_PREFS: Prefs = {
   reduceMotion: false,
   cardText: 'md',
   vibration: true,
+  tips: true,
   volumes: { master: 0.8, music: 0.4, effects: 0.8 },
 };
 
@@ -41,6 +44,7 @@ export function parsePrefs(raw: unknown, defaults: Prefs = DEFAULT_PREFS): Prefs
   if (typeof r.colorBlind === 'boolean') prefs.colorBlind = r.colorBlind;
   if (typeof r.reduceMotion === 'boolean') prefs.reduceMotion = r.reduceMotion;
   if (typeof r.vibration === 'boolean') prefs.vibration = r.vibration;
+  if (typeof r.tips === 'boolean') prefs.tips = r.tips;
   if (r.cardText === 'sm' || r.cardText === 'md' || r.cardText === 'lg')
     prefs.cardText = r.cardText;
   if (typeof r.volumes === 'object' && r.volumes !== null) {

@@ -112,6 +112,20 @@ export function SettingsButton({ className = 'px-3 py-1 text-sm' }: { className?
             />
             <span>{t.prefs.vibration}</span>
           </label>
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              className="mt-1 size-4"
+              checked={prefs.tips}
+              onChange={(e) => {
+                setPrefs({ tips: e.target.checked });
+              }}
+            />
+            <span>
+              {t.prefs.tips}
+              <span className="block text-sm text-paper/70">{t.prefs.tipsHelp}</span>
+            </span>
+          </label>
         </div>
         <form method="dialog" className="mt-5 text-right">
           <button type="submit" className="rounded-md bg-accent px-4 py-2 font-semibold text-ink">

@@ -1,10 +1,17 @@
 import { useSyncExternalStore } from 'react';
 
-export type Route = { name: 'home' } | { name: 'room'; code: string } | { name: 'notFound' };
+export type Route =
+  | { name: 'home' }
+  | { name: 'room'; code: string }
+  | { name: 'rules' }
+  | { name: 'tutorial' }
+  | { name: 'notFound' };
 
-/** Two routes only (SPEC §2.3): "/" and "/sala/:code". The History API is enough. */
+/** "/", "/sala/:code" (SPEC §2.3), "/reglas" and "/tutorial" (SPEC §8). The History API is enough. */
 export function parseRoute(pathname: string): Route {
   if (pathname === '/' || pathname === '') return { name: 'home' };
+  if (/^\/reglas\/?$/u.test(pathname)) return { name: 'rules' };
+  if (/^\/tutorial\/?$/u.test(pathname)) return { name: 'tutorial' };
   const room = /^\/sala\/([A-Za-z]{4})\/?$/u.exec(pathname);
   if (room?.[1]) return { name: 'room', code: room[1].toUpperCase() };
   return { name: 'notFound' };

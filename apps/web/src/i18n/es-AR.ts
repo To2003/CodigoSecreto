@@ -30,6 +30,7 @@ export const t = {
   },
   landing: {
     newCase: 'Sala nueva',
+    learn: 'Aprender a jugar',
     create: 'Crear sala',
     creating: 'Armando la sala…',
     joinTitle: 'Unirse con código',
@@ -264,6 +265,130 @@ export const t = {
     } satisfies Record<EmoteId, string>,
     emoteFrom: (name: string, emoji: string) => `${name} ${emoji}`,
   },
+  rules: {
+    title: 'Reglas de Clave',
+    open: 'Reglas',
+    openShort: '?',
+    back: 'Volver al inicio',
+    close: 'Cerrar',
+    cardsTitle: 'Las cartas',
+    cards: {
+      red: 'Agente rojo: suma para el Equipo Rojo.',
+      blue: 'Agente azul: suma para el Equipo Azul.',
+      civilian: 'Civil: no suma para nadie y corta el turno.',
+      traitor: 'Traidor: quien lo toca pierde la partida.',
+    } satisfies Record<CardType, string>,
+    sections: [
+      {
+        id: 'objetivo',
+        title: 'Objetivo',
+        body: [
+          'Dos equipos, Rojo y Azul, compiten sobre un tablero de 25 palabras. Detrás de cada palabra hay un agente de un equipo, un civil o el traidor.',
+          'Gana el primer equipo que encuentra a todos sus agentes. El que empieza tiene 9 agentes; el otro, 8.',
+        ],
+      },
+      {
+        id: 'roles',
+        title: 'Roles',
+        body: [
+          'Cada equipo tiene un jefe de espías y uno o más agentes.',
+          'El jefe ve el mapa clave: sabe qué hay detrás de cada palabra. Los agentes no: adivinan con las pistas de su jefe.',
+          'Los espectadores miran sin jugar.',
+        ],
+      },
+      {
+        id: 'turno',
+        title: 'Turno',
+        body: [
+          'El jefe da una pista: una sola palabra y un número, cuántas cartas del tablero conecta. Por ejemplo, MAR · 2.',
+          'Los agentes señalan cartas para charlarlas y dan vuelta las que eligen. Pueden intentar hasta el número más uno.',
+          'Si dan vuelta un agente propio, siguen. Si es un civil o un agente rival, se termina el turno (el rival se queda con esa carta). También pueden pasar el turno después de arriesgar al menos una.',
+          'Con 0 o ∞ como número, los agentes tienen intentos sin límite.',
+        ],
+      },
+      {
+        id: 'pistas',
+        title: 'Pistas válidas',
+        body: [
+          'Una sola palabra, solo letras, hasta 24. Con guion solo si la sala habilita palabras compuestas.',
+          'No puede ser una palabra del tablero que siga oculta, ni contenerla, ni estar contenida en ella: con SOL en el tablero, GIRASOL no vale. Singulares y plurales cuentan como la misma palabra.',
+          'Tampoco valen rimas, letras, posiciones en la grilla ni gestos. Si el jefe rival cree que una pista rompe las reglas, la puede objetar antes de que se dé vuelta la primera carta: la sala vota 15 segundos y, si la mayoría acepta, el turno termina y el equipo que objetó se lleva una carta.',
+        ],
+      },
+      {
+        id: 'ganar',
+        title: 'Ganar y perder',
+        body: [
+          'Gana el equipo que da vuelta a todos sus agentes, aunque los haya revelado el rival por error.',
+          'Quien toca al traidor pierde en el acto.',
+        ],
+      },
+      {
+        id: 'sala',
+        title: 'Configuración de sala',
+        body: [
+          'Quien arma la sala elige los mazos de palabras (o carga las propias), los tiempos para dar la pista y para adivinar (con 30 s de regalo en el primer turno de cada equipo), si se revela con cualquier agente o con la mayoría del equipo, si hay objeciones, si los espectadores ven el mapa, si valen palabras compuestas y si hay chat.',
+          'Durante la partida, quien ve el mapa no puede escribir en el chat: solo emotes.',
+        ],
+      },
+      {
+        id: 'atajos',
+        title: 'Atajos de teclado',
+        body: [
+          'Tab y Shift+Tab recorren las cartas y los botones.',
+          'Enter o Espacio sobre una carta la señalan; sobre el ✓, la dan vuelta.',
+          'Escape cierra los paneles y ventanas.',
+        ],
+      },
+    ],
+  },
+  tutorial: {
+    title: 'Tutorial',
+    exit: 'Saltear tutorial',
+    next: 'Siguiente',
+    step: (n: number, total: number) => `Paso ${n} de ${total}`,
+    board: 'Tablero del tutorial',
+    chip: '¿Primera vez? Mirá el tutorial (2 min)',
+    chipDismiss: 'Ocultar',
+    landingLink: 'Tutorial (2 min)',
+    rulesLink: 'Reglas',
+    steps: {
+      board:
+        'Este es el tablero: 25 palabras. Hay dos equipos, Rojo y Azul, y cada uno busca a sus agentes escondidos acá.',
+      agent:
+        'Vos sos agente del Equipo Rojo. Tu jefe ve quién es quién; vos no. Tu laburo es adivinar con sus pistas.',
+      clue: 'Tu jefe dijo MAR · 2. ¿Qué palabras se relacionan con el mar? Tocá las dos.',
+      clueRight: (word: string) => `¡Bien! ${word} era un agente rojo.`,
+      clueWrong: (word: string) => `${word} no tiene mucho que ver con el mar. Probá con otra.`,
+      clueTraitor: (word: string) =>
+        `¡Ojo! ${word} es el traidor: si lo tocás, perdés la partida. Acá te lo perdonamos.`,
+      clueDone: 'Encontraste los dos. Así se juega: pista, charla con tu equipo y a dar vuelta.',
+      civilian:
+        'Esta es un civil. Si tocás un civil, se termina el turno de tu equipo (y no suma para nadie).',
+      traitor: 'Y este es el traidor. Es la carta que nunca tenés que tocar: perdés en el acto.',
+      spymaster:
+        'Ahora sos jefe. Ves el mapa clave: las cartas tienen color. Dá una pista que conecte NIEVE y HIELO.',
+      clueLabel: 'Tu pista para NIEVE y HIELO',
+      cluePlaceholder: 'Por ejemplo, FRÍO',
+      send: 'Mandar pista',
+      spymasterDone: (clue: string) =>
+        `Con ${clue}, tus agentes encontraron NIEVE y HIELO. ¡Gran pista!`,
+      rules:
+        'Pistas: una sola palabra, solo letras. No vale una palabra del tablero, ni algo que la contenga o esté adentro (con SOL en el tablero, GIRASOL no va). Tampoco rimas, letras ni posiciones. Si te pasás, el jefe rival puede objetar.',
+      rulesOk: 'Valen: FRÍO, INVIERNO, POLAR.',
+      rulesBad: 'No valen: NIEVES (está en el tablero), DOS PALABRAS, H3LADO.',
+      done: '¡Listo! Ya podés armar una sala y jugar con tus amigos.',
+      finish: 'Ir a armar una sala',
+    },
+  },
+  tips: {
+    gotIt: 'Entendido',
+    clue: 'Una palabra y un número: cuántas cartas de tu equipo conecta. Si la pista no vale, te avisamos antes de mandarla.',
+    point:
+      'Tocá una carta para señalarla: tu equipo ve qué estás pensando. Cuando estén seguros, la dan vuelta.',
+    objection:
+      'Si la pista del rival rompe las reglas (rimas, letras, posiciones), la podés objetar antes de que den vuelta la primera carta.',
+  },
   stats: {
     title: 'Cómo fue el caso',
     duration: (ms: number) => {
@@ -294,6 +419,8 @@ export const t = {
     volumes: { master: 'Volumen general', music: 'Música', effects: 'Efectos' },
     percent: (v: number) => `${Math.round(v * 100)}%`,
     yourTurnTitle: '⚠ ¡Te toca!',
+    tips: 'Mostrar ayudas la primera vez',
+    tipsHelp: 'Cartelitos que explican cada cosa la primera vez que aparece.',
     close: 'Listo',
   },
   settings: {

@@ -8,7 +8,9 @@ import { GameOverPanel } from '../components/game/GameOverPanel';
 import { PauseOverlay } from '../components/game/PauseOverlay';
 import { TeamPanel } from '../components/game/TeamPanel';
 import { TurnStamp } from '../components/game/TurnStamp';
+import { RulesButton } from '../components/rules/RulesButton';
 import { SettingsButton } from '../components/SettingsDialog';
+import { TutorialChip } from '../components/TutorialChip';
 import { ChatPanel } from '../components/social/ChatPanel';
 import { EmoteLayer } from '../components/social/EmoteLayer';
 import { t } from '../i18n/es-AR';
@@ -223,8 +225,10 @@ export function Game({ view }: { view: RoomView }) {
             {t.game.viewAsAgent}
           </label>
         )}
+        <TutorialChip />
         <TeamsSheet view={view} teamName={teamName} />
         <ConnectionIndicator compact />
+        <RulesButton className="px-2.5 py-1 text-xs sm:px-3 sm:text-sm" />
         <SettingsButton className="px-2.5 py-1 text-xs sm:px-3 sm:text-sm" />
         {view.youId === view.hostId && game.phase.name !== 'over' && <EndGameButton />}
       </div>

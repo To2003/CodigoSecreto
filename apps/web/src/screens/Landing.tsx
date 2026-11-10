@@ -7,6 +7,8 @@ import { t } from '../i18n/es-AR';
 import { navigate, roomPath } from '../lib/router';
 import { createRoom } from '../net/client';
 
+const LEARN = ['/tutorial', '/reglas'] as const;
+
 export function Landing() {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +34,21 @@ export function Landing() {
           <ConnectionIndicator />
           <SettingsButton />
         </div>
+        <nav aria-label={t.landing.learn} className="flex gap-4 text-sm">
+          {LEARN.map((path) => (
+            <a
+              key={path}
+              href={path}
+              className="text-accent underline"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate(path);
+              }}
+            >
+              {path === '/tutorial' ? t.tutorial.landingLink : t.tutorial.rulesLink}
+            </a>
+          ))}
+        </nav>
       </header>
 
       <section className="rounded-lg bg-surface">

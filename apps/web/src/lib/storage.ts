@@ -71,3 +71,32 @@ export const saveSeat = (code: string, seat: Seat) => {
 export const forgetSeat = (code: string) => {
   remove(seatKey(code));
 };
+
+const TUTORIAL_KEY = 'clave:tutorial';
+const TIPS_KEY = 'clave:tips-seen';
+const CHIP_KEY = 'clave:tutorial-chip-hidden';
+
+/** "Tutorial completado" (SPEC §8.1): finished or skipped. */
+export const tutorialDone = () => read(TUTORIAL_KEY, (raw) => raw === true) ?? false;
+export const markTutorialDone = () => {
+  write(TUTORIAL_KEY, true);
+};
+
+/** The "¿Primera vez?" chip, hidden by hand without doing the tutorial. */
+export const tutorialChipHidden = () => read(CHIP_KEY, (raw) => raw === true) ?? false;
+export const hideTutorialChip = () => {
+  write(CHIP_KEY, true);
+};
+
+/** First-time tips already dismissed (SPEC §8.3). */
+export function tipsSeen(): string[] {
+  return (
+    read(TIPS_KEY, (raw) =>
+      Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : null,
+    ) ?? []
+  );
+}
+export function markTipSeen(id: string) {
+  const seen = tipsSeen();
+  if (!seen.includes(id)) write(TIPS_KEY, [...seen, id]);
+}

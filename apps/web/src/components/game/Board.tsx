@@ -9,7 +9,7 @@ import { useSocial } from '../../store/social';
 import { Avatar } from '../Avatar';
 import { FitText } from './FitText';
 
-const REVEALED_BG: Record<CardType, string> = {
+export const REVEALED_BG: Record<CardType, string> = {
   red: 'bg-red pattern-red',
   blue: 'bg-blue pattern-blue',
   civilian: 'bg-civil',

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { t } from '../../i18n/es-AR';
 import { objectClue, voteObjection } from '../../net/client';
 import { useRoom } from '../../store/room';
+import { Tip } from '../Tip';
 import { TimerRing } from './TimerRing';
 
 const errorText = (code: keyof typeof t.errors) => t.errors[code];
@@ -28,6 +29,7 @@ export function ObjectButton({ view }: { view: RoomView }) {
   if (!can) return null;
   return (
     <div className="flex flex-col gap-1">
+      <Tip id="objection" text={t.tips.objection} />
       <button
         type="button"
         aria-describedby="object-help"
