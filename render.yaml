@@ -1,0 +1,25 @@
+# Render Blueprint for the game server (SPEC §0.3: Render free, no card). See docs/DEPLOY.md.
+services:
+  - type: web
+    name: clave-server
+    runtime: node
+    plan: free
+    # Closest free region to Argentina.
+    region: virginia
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @clave/server build
+    startCommand: pnpm --filter @clave/server start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: '24'
+      # The Vercel URL of the web app, e.g. https://clave.vercel.app (comma-separated for more).
+      - key: CLIENT_ORIGIN
+        sync: false
+      # Render puts one proxy in front: its X-Forwarded-For entry is the player's IP.
+      - key: TRUST_PROXY_HOPS
+        value: '1'
+      - key: ROOMS_PER_MINUTE
+        value: '10'
+      - key: LOG_LEVEL
+        value: info
