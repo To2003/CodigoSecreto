@@ -186,6 +186,18 @@ export const t = {
     waitingHostEnd: 'El host decide si hay revancha.',
     players: 'Jugadores',
   },
+  prefs: {
+    open: 'Ajustes',
+    title: 'Ajustes',
+    colorBlind: 'Modo daltónico',
+    colorBlindHelp: 'Paleta naranja y azul, con íconos y tramas en las cartas.',
+    reduceMotion: 'Reducir animaciones',
+    reduceMotionHelp: 'Sin giros ni sacudidas; solo fundidos cortos.',
+    cardText: 'Tamaño del texto de las cartas',
+    sizes: { sm: 'Chico', md: 'Normal', lg: 'Grande' },
+    vibration: 'Vibrar en el celu cuando te toca',
+    close: 'Listo',
+  },
   settings: {
     title: 'Configuración',
     readOnly: 'Solo quien armó la sala puede cambiarla.',
