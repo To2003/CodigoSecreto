@@ -96,17 +96,18 @@ export function initPrefs() {
   });
 }
 
+// Module-level, so every component shares one stable subscription function.
+function subscribeSystemMotion(onChange: () => void) {
+  const query = reducedMotionQuery();
+  query.addEventListener('change', onChange);
+  return () => {
+    query.removeEventListener('change', onChange);
+  };
+}
+const systemReducesMotion = () => reducedMotionQuery().matches;
+
 /** True when animations must be reduced: system setting or the "Ajustes" toggle. */
 export function useReducedMotion(): boolean {
-  const system = useSyncExternalStore(
-    (onChange) => {
-      const query = reducedMotionQuery();
-      query.addEventListener('change', onChange);
-      return () => {
-        query.removeEventListener('change', onChange);
-      };
-    },
-    () => reducedMotionQuery().matches,
-  );
+  const system = useSyncExternalStore(subscribeSystemMotion, systemReducesMotion);
   return usePrefs((p) => p.reduceMotion) || system;
 }

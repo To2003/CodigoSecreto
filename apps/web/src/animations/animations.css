@@ -9,14 +9,19 @@
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-/* Press feedback on every enabled button (uses `scale`, independent of `transform`). */
-button:not(:disabled) {
-  transition:
-    scale 160ms var(--ease-out),
-    translate 160ms var(--ease-out);
-}
-button:not(:disabled):active {
-  scale: 0.97;
+/*
+ * Press feedback on every enabled button (uses `scale`, independent of `transform`). In the
+ * components layer so a utility's own `transition` on a button still wins.
+ */
+@layer components {
+  button:not(:disabled) {
+    transition:
+      scale 160ms var(--ease-out),
+      translate 160ms var(--ease-out);
+  }
+  button:not(:disabled):active {
+    scale: 0.97;
+  }
 }
 
 @keyframes fade-in {
@@ -101,6 +106,11 @@ button:not(:disabled):active {
   animation: particle 700ms var(--ease-out) 550ms both;
 }
 
+/* A revealed card under reduced motion: a quick fade instead of the flip. */
+.anim-fade-quick {
+  animation: fade-in 150ms ease-out both;
+}
+
 /* Civilian: a soft grey veil (desaturation without animating filters). */
 .anim-veil {
   animation: fade-in 500ms ease 600ms both;
@@ -143,9 +153,21 @@ button:not(:disabled):active {
   animation: edge-flash 800ms ease-out 550ms both;
 }
 
-/* Traitor: vignette, a 400 ms screen shake, the card big in the middle. */
+/* Traitor: vignette, a 400 ms screen shake, the card big in the middle. All gone in ~3 s. */
+@keyframes vignette {
+  0% {
+    opacity: 0;
+  }
+  20%,
+  75% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
 .anim-vignette {
-  animation: fade-in 500ms ease-out 550ms both;
+  animation: vignette 2300ms ease-out 550ms both;
 }
 @keyframes screen-shake {
   0%,
@@ -239,14 +261,18 @@ button:not(:disabled):active {
 
 /* Turn change: the stamp sweeps across the screen in the team color (700 ms). */
 @keyframes sweep {
+  /* Opacity 1 throughout: the element rests at opacity 0 once its animation is done. */
   0% {
+    opacity: 1;
     transform: translateX(-110%);
   }
   35%,
   65% {
+    opacity: 1;
     transform: translateX(0);
   }
   100% {
+    opacity: 1;
     transform: translateX(110%);
   }
 }
@@ -284,6 +310,27 @@ button:not(:disabled):active {
 :root[data-motion='reduce'] .anim-map-in {
   animation-delay: 0ms !important;
 }
-:root[data-motion='reduce'] button:not(:disabled):active {
-  scale: 1;
+:root[data-motion='reduce'] .anim-map-in,
+:root[data-motion='reduce'] .anim-veil,
+:root[data-motion='reduce'] .anim-edge-flash {
+  animation-duration: 150ms !important;
+  animation-delay: 0ms !important;
+}
+@layer components {
+  :root[data-motion='reduce'] button:not(:disabled) {
+    transition-duration: 1ms;
+  }
+  :root[data-motion='reduce'] button:not(:disabled):active {
+    scale: 1;
+  }
+}
+/* No hover lift either. */
+:root[data-motion='reduce'] button:hover {
+  translate: none !important;
+}
+
+/* Done is done: toggling reduced motion later must not replay what already played. */
+:root .anim-move[data-anim-done],
+:root[data-motion] .anim-move[data-anim-done] {
+  animation: none !important;
 }

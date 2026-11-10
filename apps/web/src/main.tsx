@@ -25,6 +25,12 @@ document.addEventListener('click', (e) => {
   if (e.target instanceof Element && e.target.closest('button:not(:disabled)'))
     audio.play('ui_click');
 });
+// A finished entrance or effect is marked, so switching reduced motion on or off later can't
+// replay it (changing an element's animation restarts it). See .anim-move[data-anim-done].
+document.addEventListener('animationend', (e) => {
+  if (e.target instanceof HTMLElement && e.target.classList.contains('anim-move'))
+    e.target.dataset.animDone = '';
+});
 bindConnection(socket);
 socket.connect();
 

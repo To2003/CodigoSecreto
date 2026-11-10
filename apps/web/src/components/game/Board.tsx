@@ -1,5 +1,5 @@
 import type { CardType, PublicCard, PublicPlayer, RoomEvent, RoomView } from '@clave/shared';
-import { memo, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { memo, useEffect, useState, type CSSProperties } from 'react';
 import { CardArt } from '../../art/CardArt';
 import { t } from '../../i18n/es-AR';
 import { pointCard, revealCard } from '../../net/client';
@@ -27,6 +27,9 @@ const KEY_TINT: Record<CardType, string> = {
   civilian: 'bg-transparent',
   traitor: 'bg-ink/85',
 };
+
+/** How long a reveal's own effects (glow, particles, shake) stay mounted. */
+const EFFECT_MS = 1800;
 
 /** How long a first tap keeps a card "armed" for the revealing second tap (SPEC §3.3). */
 const ARM_MS = 3000;
@@ -75,7 +78,7 @@ function RevealEffects({ kind, type }: { kind: RevealKind; type: CardType }) {
           <span
             key={`${dx},${dy}`}
             aria-hidden="true"
-            className="anim-particle anim-move pointer-events-none absolute top-1/2 left-1/2 size-1.5 rounded-full bg-accent"
+            className="anim-particle anim-move pointer-events-none absolute top-1/2 left-1/2 size-1.5 rounded-full bg-accent opacity-0"
             style={{ '--dx': `${dx}px`, '--dy': `${dy}px` } as CSSProperties}
           />
         ))}
@@ -144,12 +147,29 @@ const Card = memo(function Card({
 }: CardProps) {
   const reduced = useReducedMotion();
   // Flip only when this card turns while on screen (not when the board loads already revealed).
-  const seenRevealed = useRef(card.revealed);
+  // Detected during render ("previous prop" pattern), so the first frame is already the flip.
+  const [prevRevealed, setPrevRevealed] = useState(card.revealed);
   const [flipping, setFlipping] = useState(false);
+  const [fading, setFading] = useState(false);
+  // The reveal's outcome, captured when it happens, so later patches don't cut its effects.
+  const [effect, setEffect] = useState<RevealKind | undefined>(undefined);
+  if (card.revealed !== prevRevealed) {
+    setPrevRevealed(card.revealed);
+    if (card.revealed && reduced) setFading(true);
+    if (card.revealed && !reduced) {
+      setFlipping(true);
+      setEffect(kind);
+    }
+  }
   useEffect(() => {
-    if (card.revealed && !seenRevealed.current && !reduced) setFlipping(true);
-    seenRevealed.current = card.revealed;
-  }, [card.revealed, reduced]);
+    if (!effect) return;
+    const timer = setTimeout(() => {
+      setEffect(undefined);
+    }, EFFECT_MS);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [effect]);
   const type = card.revealed || showMap ? card.type : undefined;
   const canPoint = !card.revealed && canAct;
   const revealable = canPoint && directReveal;
@@ -187,8 +207,12 @@ const Card = memo(function Card({
       <span className="absolute inset-0 opacity-90">
         <CardArt type={type} id={card.id} />
       </span>
-      {kind === 'civilian' && !reduced && (
-        <span aria-hidden="true" className="anim-veil absolute inset-0 bg-[#7f7a70]/35" />
+      {type === 'civilian' && (
+        // Civilians stay softly desaturated; the veil fades in only right after the flip.
+        <span
+          aria-hidden="true"
+          className={`absolute inset-0 bg-[#7f7a70]/35 ${effect === 'civilian' ? 'anim-veil' : ''}`}
+        />
       )}
       <span className="revealed-label absolute inset-x-0.5 bottom-0.5 rounded-sm bg-black/60 px-0.5 text-center text-paper">
         <FitText text={card.word} className="font-card font-medium uppercase" />
@@ -233,14 +257,15 @@ const Card = memo(function Card({
         aria-describedby={describedBy}
         onClick={onClick}
         style={{ perspective: '700px' }}
-        className={`${kind === 'rival' && flipping ? 'anim-shake anim-move' : ''} relative block aspect-[3/2] w-full rounded-[10px] text-left shadow-[0_2px_0_rgb(0_0_0/0.35)] transition-transform enabled:cursor-pointer enabled:hover:-translate-y-0.5 ${iPoint || touchArmed ? 'ring-4 ring-accent' : ''}`}
+        className={`${effect === 'rival' ? 'anim-shake anim-move' : ''} relative block aspect-[3/2] w-full rounded-[10px] text-left shadow-[0_2px_0_rgb(0_0_0/0.35)] transition-transform enabled:cursor-pointer enabled:hover:-translate-y-0.5 ${iPoint || touchArmed ? 'ring-4 ring-accent' : ''}`}
       >
         {flipping && type ? (
           // 3D flip (SPEC §4): the word face turns over onto the revealed face.
           <span
             className="anim-flip absolute inset-0"
-            onAnimationEnd={() => {
-              setFlipping(false);
+            onAnimationEnd={(e) => {
+              // Only the flip itself ends the flip: inner animations (the game-over tint) bubble up.
+              if (e.target === e.currentTarget && e.animationName === 'flip') setFlipping(false);
             }}
           >
             <span
@@ -254,7 +279,12 @@ const Card = memo(function Card({
             </span>
           </span>
         ) : card.revealed && type ? (
-          <span className={`absolute inset-0 ${kind && !reduced ? '' : 'anim-map-in'}`}>
+          <span
+            className={`absolute inset-0 ${fading ? 'anim-fade-quick' : ''}`}
+            onAnimationEnd={() => {
+              setFading(false);
+            }}
+          >
             {back}
           </span>
         ) : (
@@ -278,7 +308,7 @@ const Card = memo(function Card({
           className={`pointer-events-none absolute top-1 right-1.5 text-[0.65rem] sm:text-sm ${type === 'traitor' ? 'text-accent' : 'text-ink'}`}
         />
       )}
-      {kind && card.revealed && type && !reduced && <RevealEffects kind={kind} type={type} />}
+      {effect && card.revealed && type && !reduced && <RevealEffects kind={effect} type={type} />}
       {touchArmed && (
         <span className="pointer-events-none absolute inset-x-0 -bottom-5 z-10 text-center text-[0.65rem] font-semibold text-accent">
           {t.game.tapAgain}

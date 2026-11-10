@@ -14,7 +14,8 @@ const COUNTS: ClueCount[] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 'inf'];
 
 /** The clue types itself in (40 ms per letter) and the number pops (SPEC §4). */
 function TypedClue({ clue }: { clue: ClueRecord }) {
-  const letters = Array.from(clue.word);
+  // NFC, so an accent typed as a combining mark stays on its letter instead of popping in alone.
+  const letters = Array.from(clue.word.normalize('NFC'));
   return (
     <>
       {letters.map((letter, i) => (
@@ -156,7 +157,13 @@ export function ActionZone({
     return (
       <div className="flex flex-col gap-2">
         <p className="hidden text-lg sm:block">{t.game.yourTurnAgents(clueText)}</p>
-        <p className="text-2xl font-bold tracking-wide sm:text-3xl" data-testid="current-clue">
+        {/* Screen readers get the clue whole; the letter-by-letter version is only visual. */}
+        <p className="sr-only">{clueText}</p>
+        <p
+          aria-hidden="true"
+          className="text-2xl font-bold tracking-wide sm:text-3xl"
+          data-testid="current-clue"
+        >
           {clue ? <TypedClue key={game.clues.length} clue={clue} /> : null}
         </p>
         <p className="text-sm text-paper/80">{t.game.guessesLeft(phase.guessesLeft)}</p>

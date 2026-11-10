@@ -11,7 +11,7 @@ import { TurnStamp } from '../components/game/TurnStamp';
 import { SettingsButton } from '../components/SettingsDialog';
 import { t } from '../i18n/es-AR';
 import { backToLobby } from '../net/client';
-import { usePrefs } from '../store/prefs';
+import { usePrefs, useReducedMotion } from '../store/prefs';
 import { useRoom } from '../store/room';
 
 /** One line about what just happened, read by screen readers too (SPEC §10 aria-live). */
@@ -184,11 +184,11 @@ export function Game({ view }: { view: RoomView }) {
     .filter(Boolean)
     .join(' ');
   const over = game.phase.name === 'over';
-  const traitorShake = events.some((e) => e.type === 'CARD_REVEALED' && e.cardType === 'traitor');
+  const traitorNow = events.some((e) => e.type === 'CARD_REVEALED' && e.cardType === 'traitor');
 
   return (
     <main
-      className={`mx-auto flex min-h-dvh max-w-7xl flex-col gap-3 px-3 pt-3 pb-(--sheet) lg:gap-4 lg:px-5 lg:pb-6 ${traitorShake ? 'anim-screen-shake anim-move' : ''}`}
+      className="mx-auto flex min-h-dvh max-w-7xl flex-col gap-3 px-3 pt-3 pb-(--sheet) lg:gap-4 lg:px-5 lg:pb-6"
       style={{ '--sheet': `${Math.ceil(sheetHeight) + 16}px` } as React.CSSProperties}
     >
       <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
@@ -220,7 +220,10 @@ export function Game({ view }: { view: RoomView }) {
         <TeamPanel view={view} team="red" name={teamName('red')} className="hidden lg:flex" />
         <div className="flex flex-col gap-4">
           {/* At game over the full map is public: "view as agent" no longer applies (SPEC §3.1). */}
-          <Board view={view} showMap={game.seesMap && (!viewAsAgent || over)} />
+          {/* Card ids are random per game, so a rematch gets a fresh wrapper (and fresh motion). */}
+          <ShakeOnTraitor key={game.cards[0]?.id} active={traitorNow} seq={seq}>
+            <Board view={view} showMap={game.seesMap && (!viewAsAgent || over)} />
+          </ShakeOnTraitor>
           {/* Action zone: a bottom sheet on phones, a panel under the board on desktop. */}
           <section
             ref={sheetRef}
@@ -241,7 +244,47 @@ export function Game({ view }: { view: RoomView }) {
         <TeamPanel view={view} team="blue" name={teamName('blue')} className="hidden lg:flex" />
       </div>
       <PauseOverlay view={view} teamName={teamName} />
-      <GameEffects game={game} events={events} seq={seq} />
+      <GameEffects
+        game={game}
+        events={events}
+        seq={seq}
+        myTeam={me && me.team !== 'spectator' ? me.team : undefined}
+      />
     </main>
   );
+}
+
+/** How long the board keeps the shake class (400 ms shake after the 600 ms flip). */
+const SHAKE_MS = 1100;
+
+/**
+ * The traitor shakes the board (SPEC §4), never the page: shaking an ancestor of the fixed
+ * overlays would turn them relative to it. No shake with reduced motion.
+ */
+function ShakeOnTraitor({
+  active,
+  seq,
+  children,
+}: {
+  active: boolean;
+  seq: number;
+  children: React.ReactNode;
+}) {
+  const reduced = useReducedMotion();
+  const [prevSeq, setPrevSeq] = useState(seq);
+  const [shaking, setShaking] = useState(false);
+  if (seq !== prevSeq) {
+    setPrevSeq(seq);
+    if (active && !reduced) setShaking(true);
+  }
+  useEffect(() => {
+    if (!shaking) return;
+    const timer = setTimeout(() => {
+      setShaking(false);
+    }, SHAKE_MS);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [shaking]);
+  return <div className={shaking ? 'anim-screen-shake anim-move' : undefined}>{children}</div>;
 }

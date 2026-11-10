@@ -16,13 +16,13 @@ export function useSoundCues(view: RoomView) {
   const seq = useRoom((s) => s.seq);
   const events = useRoom((s) => s.lastEvents);
   const vibration = usePrefs((p) => p.vibration);
-  const played = useRef(-1);
+  const playedRef = useRef(-1);
   const myTurn = isMyTurn(view);
 
   // Sounds: once per patch.
   useEffect(() => {
-    if (played.current === seq) return;
-    played.current = seq;
+    if (playedRef.current === seq) return;
+    playedRef.current = seq;
     const sounds = soundsFor(events, view);
     for (const id of sounds) audio.play(id);
     if (sounds.includes('reveal_traitor')) audio.silenceMusic(3);
