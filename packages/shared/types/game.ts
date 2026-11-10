@@ -12,6 +12,18 @@ export interface PublicCard {
   type?: CardType;
 }
 
+/**
+ * The running timer of the current phase (SPEC §1.6–1.7). `remainingMs` is measured when the view
+ * is sent, so clients don't depend on their clock matching the server's.
+ */
+export interface TimerView {
+  kind: 'clue' | 'guess' | 'objection';
+  remainingMs: number;
+  totalMs: number;
+  /** False while the game is paused: the timer is frozen. */
+  running: boolean;
+}
+
 /** The game part of a room view, already filtered for one player. */
 export interface GameView {
   phase: Phase;
@@ -30,4 +42,7 @@ export interface GameView {
    * with no agent connected. `waitingFor` lists who could unblock it by coming back.
    */
   paused: { team: Team; reason: 'spymaster' | 'agents'; waitingFor: string[] } | null;
+  timer: TimerView | null;
+  /** How long the game lasted; set once it's over (end-of-game stats, SPEC §9). */
+  durationMs: number | null;
 }

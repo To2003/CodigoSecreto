@@ -299,4 +299,99 @@ describe('anti-leak (SPEC §2.1)', () => {
       expect(leaks({ view: p.view() }, new Set(hidden.map((c) => c.id))), p.name).toEqual([]);
     }
   });
+
+  /**
+   * M7: timers, objections and chat. Every view now carries a timer and the objection phase;
+   * team chat lines must only reach their team. All agent and spectator payloads are checked.
+   */
+  it('stays sealed with timers, an accepted objection and team chat', async () => {
+    const ana = await join('Ana');
+    const code = ana.view()?.code ?? '';
+    const beto = await join('Beto', code);
+    const caro = await join('Caro', code);
+    const dani = await join('Dani', code);
+    const eli = await join('Eli', code);
+    await eli.socket.emitWithAck('lobby:setTeam', { team: 'spectator' });
+    await ana.socket.emitWithAck('lobby:updateSettings', {
+      settings: { clueTimer: 60, guessTimer: 60, objections: true },
+    });
+    await ana.socket.emitWithAck('lobby:setRole', { role: 'spymaster' });
+    await beto.socket.emitWithAck('lobby:setRole', { role: 'spymaster' });
+    await ana.socket.emitWithAck('game:start', {});
+    await settle();
+    expect(caro.view()?.game?.timer).toMatchObject({ kind: 'clue', running: true });
+
+    // Team chat: red's line never reaches blue or the spectator, and vice versa.
+    expect(
+      await caro.socket.emitWithAck('chat:send', { text: 'plan rojo', scope: 'team' }),
+    ).toEqual({ ok: true });
+    expect(
+      await dani.socket.emitWithAck('chat:send', { text: 'plan azul', scope: 'team' }),
+    ).toEqual({ ok: true });
+    // Spymasters can't write during the game (SPEC §9).
+    const muted = await ana.socket.emitWithAck('chat:send', { text: 'pista extra', scope: 'all' });
+    expect(muted.ok).toBe(false);
+
+    // An accepted objection: the rival spymaster objects and everyone votes yes.
+    const spymaster: Record<Team, Player> = { red: ana, blue: beto };
+    const agent: Record<Team, Player> = { red: caro, blue: dani };
+    const first = ana.view()?.game?.phase;
+    if (!first || first.name === 'over') throw new Error('setup');
+    const team = first.team;
+    const rivalTeam: Team = team === 'red' ? 'blue' : 'red';
+    await spymaster[team].socket.emitWithAck('game:clue', { word: 'QXZ', count: 2 });
+    await settle();
+    expect(await spymaster[rivalTeam].socket.emitWithAck('game:object', {})).toEqual({ ok: true });
+    await settle();
+    expect(caro.view()?.game?.timer).toMatchObject({ kind: 'objection' });
+    for (const voter of [spymaster[rivalTeam], caro, dani]) {
+      await voter.socket.emitWithAck('game:vote', { accept: true });
+    }
+    await settle();
+    expect(ana.view()?.game?.clues[0]?.objection).toBe('accepted');
+
+    // A few more turns with reveals.
+    for (let turn = 0; turn < 4; turn++) {
+      const game = ana.view()?.game;
+      if (!game || game.phase.name === 'over') break;
+      const now = game.phase.team;
+      await spymaster[now].socket.emitWithAck('game:clue', { word: 'QXZ', count: 'inf' });
+      await settle();
+      const own = (spymaster[now].view()?.game?.cards ?? []).filter(
+        (c) => !c.revealed && c.type === now,
+      );
+      for (const card of own.slice(0, 2)) {
+        await agent[now].socket.emitWithAck('game:reveal', { cardId: card.id });
+      }
+      await settle();
+      if (ana.view()?.game?.phase.name === 'guess') {
+        await agent[now].socket.emitWithAck('game:endGuessing', {});
+        await settle();
+      }
+    }
+
+    const texts = (p: Player) =>
+      p.payloads
+        .filter((x): x is { text: string } => typeof (x as { text?: unknown }).text === 'string')
+        .map((x) => x.text);
+    expect(texts(caro)).toContain('plan rojo');
+    expect(texts(caro)).not.toContain('plan azul');
+    expect(texts(dani)).toContain('plan azul');
+    expect(texts(dani)).not.toContain('plan rojo');
+    expect(texts(eli)).toEqual([]);
+    expect(texts(beto)).not.toContain('plan rojo');
+
+    for (const watcher of [caro, dani, eli]) {
+      let inspected = 0;
+      for (const payload of watcher.payloads) {
+        const hidden = hiddenCards(payload);
+        if (!hidden) continue;
+        const view = (payload as { view: RoomView }).view;
+        if (view.game?.phase.name === 'over') continue;
+        inspected += 1;
+        expect(leaks(payload, new Set(hidden.map((c) => c.id))), watcher.name).toEqual([]);
+      }
+      expect(inspected, watcher.name).toBeGreaterThan(5);
+    }
+  });
 });

@@ -32,6 +32,23 @@ export function sanitizeNickname(raw: string): string {
 
 const id = z.string().min(1).max(64);
 
+/** Quick reactions (SPEC §9). Ids travel; the client shows the emoji. */
+export const EMOTES = ['thinking', 'shocked', 'laughing', 'clap', 'please', 'fire'] as const;
+export type EmoteId = (typeof EMOTES)[number];
+export const MAX_CHAT_LENGTH = 200;
+
+/**
+ * Chat text (SPEC §2.5, §9): no control or invisible characters, single spaces, at most 200
+ * characters. React escapes output anyway; this keeps messages readable everywhere.
+ */
+export function sanitizeChat(raw: string): string {
+  const cleaned = raw
+    .replace(/[\p{Cc}\p{Cf}]/gu, ' ')
+    .replace(/\s+/gu, ' ')
+    .trim();
+  return Array.from(cleaned).slice(0, MAX_CHAT_LENGTH).join('').trim();
+}
+
 const profile = z
   .object({
     nickname: z.string().max(100),
@@ -74,6 +91,10 @@ export const clientEvents = {
   'game:rematch': z.object({ keepSpymasters: z.boolean().default(false) }).strict(),
   'game:backToLobby': z.object({}).strict(),
   'game:setSpymaster': z.object({ playerId: id }).strict(),
+  'game:object': z.object({}).strict(),
+  'game:vote': z.object({ accept: z.boolean() }).strict(),
+  'chat:send': z.object({ text: z.string().max(1000), scope: z.enum(['all', 'team']) }).strict(),
+  'emote:send': z.object({ emoteId: z.enum(EMOTES) }).strict(),
 } as const;
 
 export type ClientEventName = keyof typeof clientEvents;

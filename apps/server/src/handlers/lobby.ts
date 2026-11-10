@@ -112,6 +112,7 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
     socket.data = { roomCode: room.code, playerId };
     void socket.join(key);
     socket.emit('room:state', { seq: room.seq, view: room.view(playerId) });
+    socket.emit('chat:history', room.chatHistory(playerId));
   };
 
   /** Unbinds this socket; when it was the seat's last one, the player shows as disconnected. */
@@ -235,6 +236,29 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
     game((playerId) => ({ type: 'END_GUESSING', playerId }));
     return undefined;
   });
+  on('game:object', () => {
+    game((playerId) => ({ type: 'OBJECT_CLUE', playerId }));
+    return undefined;
+  });
+  on('game:vote', ({ accept }) => {
+    game((playerId) => ({ type: 'VOTE_OBJECTION', playerId, accept }));
+    return undefined;
+  });
+
+  // Chat and emotes don't change the game: they go out on their own events, not in a patch.
+  on('chat:send', ({ text, scope }) => {
+    const { room, playerId } = current();
+    const { message, recipients } = room.sendChat(playerId, text, scope);
+    for (const id of recipients) io.to(channel(room.code, id)).emit('chat:message', message);
+    return undefined;
+  });
+  on('emote:send', ({ emoteId }) => {
+    const { room, playerId } = current();
+    const emote = room.emote(playerId, emoteId);
+    for (const p of room.players) io.to(channel(room.code, p.id)).emit('emote', emote);
+    return undefined;
+  });
+
   on('game:setSpymaster', ({ playerId: target }) => {
     const { room, playerId } = current();
     broadcast(io, room, room.setSpymaster(playerId, target));

@@ -37,6 +37,8 @@ function view(youId: string, phase?: GameView['phase']): RoomView {
           remaining: { red: 9, blue: 8 },
           seesMap: false,
           paused: null,
+          timer: null,
+          durationMs: null,
         }
       : null,
   };

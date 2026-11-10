@@ -10,6 +10,7 @@ export function toPublicView(
   game: GameState,
   viewerId: string,
   paused: GameView['paused'] = null,
+  room: Pick<GameView, 'timer' | 'durationMs'> = { timer: null, durationMs: null },
 ): GameView {
   const viewer = game.players.find((p) => p.id === viewerId);
   const team = viewer?.team ?? 'spectator';
@@ -37,6 +38,9 @@ export function toPublicView(
     remaining,
     seesMap,
     paused,
+    // Room-level facts with no card information in them: the timer and the game's duration.
+    timer: room.timer && { ...room.timer },
+    durationMs: room.durationMs,
   };
 }
 

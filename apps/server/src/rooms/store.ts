@@ -9,7 +9,11 @@ export const EMPTY_ROOM_TTL_MS = 30 * 60_000;
 export class RoomStore {
   private readonly rooms = new Map<string, Room>();
 
-  constructor(private readonly newCode = generateRoomCode) {}
+  constructor(
+    private readonly newCode = generateRoomCode,
+    /** The server clock, handed to every room for its timers. */
+    private readonly clock: () => number = Date.now,
+  ) {}
 
   get size() {
     return this.rooms.size;
@@ -19,6 +23,7 @@ export class RoomStore {
     const room = new Room(
       this.newCode((code) => this.rooms.has(code)),
       now,
+      this.clock,
     );
     this.rooms.set(room.code, room);
     return room;
@@ -30,6 +35,16 @@ export class RoomStore {
 
   delete(code: string) {
     this.rooms.delete(code);
+  }
+
+  /** Runs out due timers (SPEC §1.7). Returns the rooms that need a broadcast. */
+  tick(): { room: Room; events: RoomEvent[] }[] {
+    const changed: { room: Room; events: RoomEvent[] }[] = [];
+    for (const room of this.rooms.values()) {
+      const events = room.tick();
+      if (events.length > 0) changed.push({ room, events });
+    }
+    return changed;
   }
 
   /** Releases expired seats and drops abandoned rooms. Returns the rooms that need a broadcast. */

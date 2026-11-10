@@ -9,6 +9,8 @@ import { RoomStore } from './rooms/store';
 
 /** How often seats and abandoned rooms are swept. */
 const SWEEP_INTERVAL_MS = 5_000;
+/** How often game timers are checked: a timer ends at most this late. */
+const TICK_INTERVAL_MS = 250;
 /** Largest message a client may send (custom word lists are the biggest legit payload). */
 const MAX_MESSAGE_BYTES = 100_000;
 
@@ -27,6 +29,8 @@ export interface ClaveServer {
   store: RoomStore;
   /** Runs one sweep now (the interval calls it too). */
   sweep(): void;
+  /** Runs out due game timers now (an interval calls it every 250 ms). */
+  tick(): void;
   close(): Promise<void>;
 }
 
@@ -66,7 +70,7 @@ export function createServer({ clientOrigins, log, now = Date.now }: ServerOptio
     },
   });
 
-  const store = new RoomStore();
+  const store = new RoomStore(undefined, now);
 
   io.on('connection', (socket) => {
     log.info('socket connected', { socketId: socket.id });
@@ -81,6 +85,17 @@ export function createServer({ clientOrigins, log, now = Date.now }: ServerOptio
   };
   const sweeper = setInterval(sweep, SWEEP_INTERVAL_MS);
   sweeper.unref();
+  const tick = () => {
+    for (const { room, events } of store.tick()) broadcast(io, room, events);
+  };
+  const ticker = setInterval(() => {
+    try {
+      tick();
+    } catch (err) {
+      log.error('timer tick failed', { err });
+    }
+  }, TICK_INTERVAL_MS);
+  ticker.unref();
 
   return {
     app,
@@ -88,9 +103,11 @@ export function createServer({ clientOrigins, log, now = Date.now }: ServerOptio
     io,
     store,
     sweep,
+    tick,
     close: () =>
       new Promise((resolve) => {
         clearInterval(sweeper);
+        clearInterval(ticker);
         // io.close() also closes the HTTP server; an error here only means it wasn't listening.
         void io.close(() => {
           resolve();

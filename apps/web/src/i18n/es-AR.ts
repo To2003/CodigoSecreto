@@ -263,6 +263,8 @@ export const t = {
     NOT_PAUSED: 'Solo se cambia el jefe cuando la partida está en pausa por su ausencia.',
     PLAYER_UNAVAILABLE: 'Tiene que ser un agente conectado de ese equipo.',
     NO_AGENT_LEFT: 'Si lo hacés jefe, el equipo se queda sin agentes para adivinar.',
+    CHAT_DISABLED: 'El chat está apagado en esta sala.',
+    CHAT_NOT_ALLOWED: 'Quien ve el mapa no escribe durante la partida: solo emotes.',
     CANNOT_START: 'Todavía no se puede empezar: faltan jugadores o palabras.',
     GAME_IN_PROGRESS: 'Ya hay una partida en curso.',
     NO_GAME: 'No hay ninguna partida en curso.',

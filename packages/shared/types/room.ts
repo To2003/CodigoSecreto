@@ -1,7 +1,7 @@
 import type { ClueRejection } from '../engine/clue';
 import type { EngineErrorCode, GameEvent, PlayerTeam, Role, Team } from '../engine/types';
 import type { GameView } from './game';
-import type { AvatarColor, ClientEventName, ClientPayload } from '../schemas/events';
+import type { AvatarColor, ClientEventName, ClientPayload, EmoteId } from '../schemas/events';
 import type { Settings } from '../schemas/settings';
 
 /** What every client sees about a player. Tokens never leave the server. */
@@ -78,6 +78,8 @@ export type ErrorCode =
   | 'NOT_PAUSED'
   | 'PLAYER_UNAVAILABLE'
   | 'NO_AGENT_LEFT'
+  | 'CHAT_DISABLED'
+  | 'CHAT_NOT_ALLOWED'
   | EngineErrorCode;
 
 export interface ErrorPayload {
@@ -102,8 +104,29 @@ export type ClientToServerEvents = {
   [E in ClientEventName]: (payload: ClientPayload<E>, ack: (res: AckFor<E>) => void) => void;
 };
 
+/** A chat line (SPEC §9). Team lines reach only the members of that team (or the spectators). */
+export interface ChatMessage {
+  id: number;
+  playerId: string;
+  scope: 'all' | 'team';
+  /** For team lines: whose channel it is. */
+  team?: PlayerTeam;
+  text: string;
+  /** Server time, ms epoch. */
+  at: number;
+}
+
+export interface EmoteEvent {
+  playerId: string;
+  emoteId: EmoteId;
+}
+
 export interface ServerToClientEvents {
   'room:state': (state: { seq: number; view: RoomView }) => void;
   'room:patch': (patch: RoomPatch) => void;
   'room:kicked': () => void;
+  'chat:message': (message: ChatMessage) => void;
+  /** The recent lines this player may read, sent on (re)joining. */
+  'chat:history': (messages: ChatMessage[]) => void;
+  emote: (emote: EmoteEvent) => void;
 }
