@@ -21,6 +21,9 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
+      // Conflicts with no-non-null-assertion (strict): one asks for `!`, the other forbids it.
+      // We keep the strict rule and allow a commented `as` for proven invariants.
+      '@typescript-eslint/non-nullable-type-assertion-style': 'off',
     },
   },
 

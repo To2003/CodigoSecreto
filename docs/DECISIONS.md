@@ -134,7 +134,7 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 
 1. **Objeción aceptada** (§1.6): se revela un agente no revelado del equipo que objetó (el rival del que dio la pista), elegido con el RNG de la partida. Si con eso completa sus agentes, gana. El turno pasa al equipo que objetó.
 2. **Quién vota la objeción**: los jugadores de los equipos Rojo y Azul, conectados al abrirse la votación, menos el jefe que dio la pista. Los espectadores no votan (§1.2: "no actúa"). El voto del jefe que objeta cuenta como "acepto".
-3. **Mayoría de la objeción**: se acepta solo si los votos "acepto" superan la mitad de los votantes habilitados. Empate o no votar = se rechaza (gana el statu quo). Se resuelve cuando votaron todos o cuando vence el timer de 15 s (`TIMER_EXPIRED`).
+3. **Mayoría de la objeción**: se acepta solo si los votos "acepto" superan la mitad de los votantes habilitados. Empate o no votar = se rechaza (gana el statu quo). Se resuelve apenas el resultado no puede cambiar (ya hay mayoría de "acepto", o los votos que faltan no alcanzan para llegar), o cuando vence el timer de 15 s (`TIMER_EXPIRED`).
 4. **Cuándo se puede objetar**: solo el jefe rival, en fase de adivinanza, antes de la primera revelación de ese turno, y una sola vez por pista. Si se rechaza, la adivinanza sigue igual.
 5. **Plural básico** (§1.6): una palabra se compara también sin `s` o `es` final, solo si lo que queda tiene 3+ letras (así "MES" no se reduce a "ME"). La regla de "contener / estar contenida" usa esas mismas formas.
 6. **Palabras compuestas**: con la opción activa se permite un guion entre dos grupos de letras; se valida la palabra entera y cada parte.
