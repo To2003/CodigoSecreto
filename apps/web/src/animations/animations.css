@@ -347,6 +347,49 @@
   animation-name: emote-fade;
 }
 
+/* Waking the server (SPEC §0.4): blinking eyes, drifting "z", an indeterminate bar. */
+@keyframes blink {
+  0%,
+  70%,
+  100% {
+    opacity: 1;
+  }
+  80%,
+  90% {
+    opacity: 0;
+  }
+}
+.anim-blink {
+  animation: blink 2.4s ease-in-out infinite;
+}
+@keyframes zzz {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(6px, -14px);
+  }
+}
+.anim-zzz {
+  animation: zzz 1.8s ease-out infinite;
+}
+@keyframes indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+.anim-indeterminate {
+  animation: indeterminate 1.4s var(--ease-in-out) infinite;
+}
+
 /* Game over: the rest of the key map shows up in a cascade. */
 .anim-map-in {
   animation: fade-in 300ms ease-out both;

@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './net/client';
+import { wakeServer } from './net/health';
 import { socket } from './net/socket';
 import { App } from './App';
 import { audio } from './audio/engine';
@@ -32,6 +33,8 @@ document.addEventListener('animationend', (e) => {
     e.target.dataset.animDone = '';
 });
 bindConnection(socket);
+// Wake a sleeping server as early as possible (SPEC §0.4), alongside the socket.
+wakeServer();
 socket.connect();
 
 const root = document.getElementById('root');

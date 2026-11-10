@@ -457,6 +457,21 @@ export const t = {
     objection:
       'Si la pista del rival rompe las reglas (rimas, letras, posiciones), la podés objetar antes de que den vuelta la primera carta.',
   },
+  wake: {
+    title: 'Despertando a los agentes…',
+    body: 'El servidor gratis se duerme cuando nadie juega. Tarda hasta un minuto en levantarse.',
+    progress: 'Despertando el servidor',
+    snore: 'z',
+    failedTitle: 'Los agentes no se despiertan',
+    failedBody: 'Pasó un minuto y medio sin respuesta. Puede ser tu conexión o el servidor.',
+    retry: 'Reintentar',
+  },
+  crash: {
+    title: 'Algo se rompió',
+    body: 'Se nos trabó la pantalla. Si estabas en una sala, volvés a tu lugar.',
+    back: 'Volver a la sala',
+    home: 'Volver al inicio',
+  },
   stats: {
     title: 'Cómo fue el caso',
     duration: (ms: number) => {

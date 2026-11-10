@@ -1,6 +1,9 @@
 import { LazyMotion, MotionConfig } from 'motion/react';
 import { lazy, Suspense } from 'react';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { WakeScreen } from './components/WakeScreen';
 import { t } from './i18n/es-AR';
+import { wakeServer } from './net/health';
 import { navigate, useRoute } from './lib/router';
 import { Landing } from './screens/Landing';
 import { RoomScreen } from './screens/RoomScreen';
@@ -19,7 +22,9 @@ export function App() {
     // Motion follows the same reduced-motion rule as the CSS animations (system or "Ajustes").
     <MotionConfig reducedMotion={reduced ? 'always' : 'never'}>
       <LazyMotion features={loadMotionFeatures} strict>
-        <Screen />
+        <ErrorBoundary>
+          <Screen />
+        </ErrorBoundary>
       </LazyMotion>
     </MotionConfig>
   );
@@ -29,9 +34,19 @@ function Screen() {
   const route = useRoute();
   switch (route.name) {
     case 'home':
-      return <Landing />;
+      return (
+        <>
+          <Landing />
+          <WakeScreen onRetry={wakeServer} />
+        </>
+      );
     case 'room':
-      return <RoomScreen key={route.code} code={route.code} />;
+      return (
+        <>
+          <RoomScreen key={route.code} code={route.code} />
+          <WakeScreen onRetry={wakeServer} />
+        </>
+      );
     case 'rules':
       return (
         <Suspense fallback={null}>
