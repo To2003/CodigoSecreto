@@ -126,12 +126,12 @@ export function ActionZone({
     const guessed = (clue?.guesses.length ?? 0) > 0;
     return (
       <div className="flex flex-col gap-2">
-        <p className="text-lg">{t.game.yourTurnAgents(clueText)}</p>
-        <p className="text-3xl font-bold tracking-wide" data-testid="current-clue">
+        <p className="hidden text-lg sm:block">{t.game.yourTurnAgents(clueText)}</p>
+        <p className="text-2xl font-bold tracking-wide sm:text-3xl" data-testid="current-clue">
           {clueText}
         </p>
         <p className="text-sm text-paper/80">{t.game.guessesLeft(phase.guessesLeft)}</p>
-        <p className="text-sm text-paper/70">
+        <p className="hidden text-sm text-paper/70 sm:block">
           {view.settings.revealMode === 'majority' ? t.game.majorityHint : t.game.pointHint}
         </p>
         <div className="flex items-center gap-3">

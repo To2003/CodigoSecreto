@@ -61,7 +61,7 @@ export function ProfileForm({
             setMissing(false);
             setProfile({ ...profile, nickname: e.target.value });
           }}
-          className="rounded-md border border-paper/30 bg-bg px-3 py-2 text-base text-paper"
+          className="rounded-md border border-line bg-bg px-3 py-2 text-base text-paper"
         />
         {missing && <span className="text-red-soft">{t.profile.nicknameMissing}</span>}
       </label>

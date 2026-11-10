@@ -74,6 +74,11 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .4 0 0 0 0 .33 0 0 0 0 .2 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
+/* Card word size: fluid with the viewport, scaled by the setting; FitText shrinks long words. */
+[data-fit].font-card {
+  font-size: calc(clamp(0.72rem, 2.7vw, 1.4rem) * var(--card-text-scale));
+}
+
 /* Team patterns for color-blind mode: stripes for red, dots for blue (SPEC §5.6). */
 :root[data-colorblind='true'] .pattern-red {
   background-image: repeating-linear-gradient(

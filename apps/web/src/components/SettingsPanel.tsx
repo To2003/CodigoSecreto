@@ -61,8 +61,11 @@ export function SettingsPanel({
   };
 
   return (
-    <section className="rounded-xl border border-paper/20 p-4">
-      <h2 className="mb-1 text-lg font-semibold">{t.settings.title}</h2>
+    // Collapsible: open for the host who edits it, folded for everyone else (long on phones).
+    <details open={editable} className="group rounded-lg bg-surface p-4">
+      <summary className="cursor-pointer text-lg font-semibold">
+        <h2 className="inline">{t.settings.title}</h2>
+      </summary>
       {!editable && <p className="mb-3 text-sm text-paper/70">{t.settings.readOnly}</p>}
       <fieldset
         disabled={!editable}
@@ -244,6 +247,6 @@ export function SettingsPanel({
           ))}
         </fieldset>
       </fieldset>
-    </section>
+    </details>
   );
 }

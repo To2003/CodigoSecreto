@@ -5,7 +5,7 @@ import { setPrefs, usePrefs, type Prefs } from '../store/prefs';
 const CARD_TEXT_SIZES: Prefs['cardText'][] = ['sm', 'md', 'lg'];
 
 /** "Ajustes" (SPEC §3.1 #8) in a native <dialog>: focus trap and Esc come for free. */
-export function SettingsButton() {
+export function SettingsButton({ className = 'px-3 py-1 text-sm' }: { className?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
   const prefs = usePrefs();
   const id = useId();
@@ -13,7 +13,7 @@ export function SettingsButton() {
     <>
       <button
         type="button"
-        className="rounded-md border border-line px-3 py-1 text-sm hover:border-paper/50"
+        className={`rounded-md border border-line hover:border-paper/50 ${className}`}
         onClick={() => ref.current?.showModal()}
       >
         {t.prefs.open}

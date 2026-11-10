@@ -9,7 +9,7 @@ export function ClueLog({ view, team }: { view: RoomView; team: Team }) {
   const word = (id: string) => game.cards.find((c) => c.id === id)?.word ?? '';
   return (
     <section aria-label={t.game.history}>
-      <h3 className="text-xs tracking-wide text-paper/70 uppercase">{t.game.history}</h3>
+      <h3 className="mb-1 text-sm font-semibold text-paper/80">{t.game.history}</h3>
       {clues.length === 0 ? (
         <p className="text-sm text-paper/60">{t.game.noClues}</p>
       ) : (

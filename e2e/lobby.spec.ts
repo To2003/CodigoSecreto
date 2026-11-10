@@ -69,6 +69,8 @@ test('host settings reach everyone; non-hosts see them read-only', async ({ brow
   await joinByLink(beto, code);
 
   await ana.page.getByLabel('Tiempo para la pista').selectOption('90');
+  // Guests see the settings folded; they can open them to read.
+  await beto.page.getByText('Configuración').click();
   await expect(beto.page.getByLabel('Tiempo para la pista')).toHaveValue('90');
   await expect(beto.page.getByLabel('Tiempo para la pista')).toBeDisabled();
   await expect(beto.page.getByText('Solo quien armó la sala puede cambiarla.')).toBeVisible();

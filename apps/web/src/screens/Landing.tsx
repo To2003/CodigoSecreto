@@ -2,6 +2,7 @@ import { roomCodeSchema } from '@clave/shared';
 import { useId, useState } from 'react';
 import { ConnectionIndicator } from '../components/ConnectionIndicator';
 import { ProfileForm } from '../components/ProfileForm';
+import { SettingsButton } from '../components/SettingsDialog';
 import { t } from '../i18n/es-AR';
 import { navigate, roomPath } from '../lib/router';
 import { createRoom } from '../net/client';
@@ -14,31 +15,49 @@ export function Landing() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-8 px-4 py-10">
-      <header className="flex flex-col items-center gap-3 text-center">
-        <h1 className="text-6xl font-bold tracking-widest text-paper uppercase">{t.app.name}</h1>
-        <p className="text-paper/80">{t.app.tagline}</p>
-        <ConnectionIndicator />
+      <header className="flex flex-col items-center gap-4 pt-4 text-center">
+        <div className="relative">
+          <h1 className="font-stamp text-7xl tracking-[0.2em] text-paper uppercase sm:text-8xl">
+            {t.app.name}
+          </h1>
+          <span
+            aria-hidden="true"
+            className="absolute -right-6 -bottom-3 rotate-[-8deg] rounded border-[3px] border-double border-red px-2 font-stamp text-base tracking-widest text-red uppercase opacity-90 sm:-right-10"
+          >
+            {t.app.stamp}
+          </span>
+        </div>
+        <p className="max-w-sm text-paper/80">{t.app.tagline}</p>
+        <div className="flex items-center gap-3">
+          <ConnectionIndicator />
+          <SettingsButton />
+        </div>
       </header>
 
-      <section className="rounded-xl border border-paper/15 p-4">
-        <ProfileForm
-          submitLabel={t.landing.create}
-          busyLabel={t.landing.creating}
-          onSubmit={async (profile) => {
-            setError(null);
-            const res = await createRoom(profile);
-            if (res.ok) navigate(roomPath(res.roomCode));
-            else setError(t.errors[res.code]);
-          }}
-        />
-        {error && (
-          <p role="alert" className="mt-3 text-red-soft">
-            {error}
-          </p>
-        )}
+      <section className="rounded-lg bg-surface">
+        <p className="rounded-t-lg bg-paper-shade px-4 py-1.5 font-stamp text-ink">
+          {t.landing.newCase}
+        </p>
+        <div className="p-4">
+          <ProfileForm
+            submitLabel={t.landing.create}
+            busyLabel={t.landing.creating}
+            onSubmit={async (profile) => {
+              setError(null);
+              const res = await createRoom(profile);
+              if (res.ok) navigate(roomPath(res.roomCode));
+              else setError(t.errors[res.code]);
+            }}
+          />
+          {error && (
+            <p role="alert" className="mt-3 text-red-soft">
+              {error}
+            </p>
+          )}
+        </div>
       </section>
 
-      <section className="flex flex-col gap-2 rounded-xl border border-paper/15 p-4">
+      <section className="flex flex-col gap-2 rounded-lg bg-surface p-4">
         <h2 className="text-lg font-semibold">{t.landing.joinTitle}</h2>
         <form
           className="flex gap-2"

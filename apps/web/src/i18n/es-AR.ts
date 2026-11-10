@@ -19,6 +19,7 @@ export const t = {
     name: 'Clave',
     tagline: 'Deducción por equipos con palabras. Armá una sala y jugá con tus amigos.',
     footer: 'Inspirado en juegos de deducción por equipos. Proyecto sin fines de lucro.',
+    stamp: 'Confidencial',
   },
   connection: {
     connecting: 'Buscando a los agentes…',
@@ -27,6 +28,7 @@ export const t = {
     disconnected: 'Se cortó la conexión. Recargá la página.',
   },
   landing: {
+    newCase: 'Sala nueva',
     create: 'Crear sala',
     creating: 'Armando la sala…',
     joinTitle: 'Unirse con código',
@@ -107,6 +109,7 @@ export const t = {
   game: {
     remaining: (n: number) => (n === 1 ? '1 restante' : `${n} restantes`),
     turnOf: (team: string) => `Turno del ${team}`,
+    shortTeam: { red: 'Rojo', blue: 'Azul' } satisfies Record<Team, string>,
     paused: 'En pausa',
     clueLine: (word: string, c: ClueCount) => `${word} · ${c === 'inf' ? '∞' : String(c)}`,
     count: (c: ClueCount) => (c === 'inf' ? '∞' : String(c)),
@@ -135,7 +138,18 @@ export const t = {
     point: (word: string) => `Señalar ${word}`,
     unpoint: (word: string) => `Dejar de señalar ${word}`,
     pointedBy: (names: string[]) => `Señalada por ${names.join(', ')}`,
+    board: 'Tablero',
+    stampTurn: (team: string) => `Turno ${team}`,
+    stampPaused: 'En pausa',
+    stampOver: 'Caso cerrado',
+    teamsAndHistory: 'Equipos e historial',
+    close: 'Cerrar',
     viewAsAgent: 'Ver como agente',
+    traitorStamp: 'TRAIDOR',
+    typeIcon: { red: '▲', blue: '●', civilian: '■', traitor: '✕' } satisfies Record<
+      CardType,
+      string
+    >,
     cardType: {
       red: 'agente rojo',
       blue: 'agente azul',
