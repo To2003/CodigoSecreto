@@ -199,3 +199,18 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Lighthouse**: queda para M8 (se mide contra el build en preview); M4 cubre accesibilidad con axe en los E2E.
 - **Íconos en la vista de jefe siempre** (review de M4): SPEC §3.2 dice "color de fondo tenue + ícono del tipo" para el jefe y §5.6 dice que en modo daltónico los íconos aparecen "también" ahí. Se elige lo más accesible: el jefe siempre ve el ícono, con o sin modo daltónico (los tintes solos contrastan poco y un error del jefe cuesta caro).
 - **Doble tap en mobile** (review de M4): el primer toque señala y "arma" la carta por 3 s (estado local, no espera al server), el nombre accesible pasa a "Dar vuelta X" y aparece "Tocá de nuevo"; pasado ese tiempo, otro toque quita la marca en vez de revelar. `touch-action: manipulation` evita el zoom por doble toque en iOS.
+
+## ADR-024 — Animaciones en CSS, Motion solo para layout (M5)
+
+- **Estado**: Aceptada (2026-11-10, M5, modo autónomo)
+- **Decisión**: las animaciones predeterminadas (cascada, flip 3D, sacudidas, destellos, barrido de turno, máquina de escribir, contadores) son keyframes CSS sobre `transform` y `opacity`, que corren fuera del hilo principal. Motion (SPEC §0.3) se usa donde aporta: las filas del lobby que viajan de columna (layout animations). `canvas-confetti` se carga solo al ganar.
+- **Movimiento reducido**: el sistema (`prefers-reduced-motion`) o el toggle de Ajustes ponen `data-motion="reduce"`; toda animación de movimiento lleva `.anim-move` y pasa a un fundido de 150 ms; el flip directamente no se renderiza. Motion recibe `reducedMotion="always"`.
+- **Rendimiento**: las cartas se memorizan con props derivadas, así un patch solo re-renderiza lo que cambió. Medido con CPU ×4: los frames de la revelación quedan en 16,7 ms (mediana y p95); el frame en el que llega el patch y React commitea queda acotado (~50–67 ms bajo ×4).
+- **Descartadas**: todo en Motion (sus `x`/`y` corren en el hilo principal y caen frames bajo carga); WAAPI a mano (más código para lo mismo que CSS).
+
+## ADR-025 — Sonido sintetizado con Web Audio, sin Howler por ahora (M6)
+
+- **Estado**: Aceptada (2026-11-10, M6, instrucción de Tomás: sin descargar assets)
+- **Decisión**: cada efecto del SPEC §6.2 y las dos músicas se generan con Web Audio (`apps/web/src/audio/engine.ts`). La API (`unlock`, `play`, `setMusic`, `setIntensity`, `setVolumes`) es la que va a usar la versión con archivos reales; `docs/AUDIO-ASSETS.md` lista qué buscar y cómo armar el sprite con Howler (SPEC §6.4).
+- **Por qué**: cero descargas y cero peso; Howler no aporta nada sin archivos.
+- **Detalles**: el contexto se crea y se reanuda en el primer gesto (iOS/Chrome); canales master/música/efectos persistidos; música apagada por defecto en mobile; el traidor silencia la música 3 s; "te toca" con la pestaña oculta hace parpadear el título y vibrar el celu.
