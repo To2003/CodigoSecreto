@@ -18,7 +18,7 @@
     "typecheck": "tsc -p . && pnpm -r --if-present typecheck",
     "check:fast": "pnpm typecheck && pnpm lint && pnpm format:check && node scripts/floor-guard.mjs",
     "check:task": "pnpm check:fast && pnpm coverage",
-    "check:full": "pnpm check:task && VITE_SERVER_URL=http://localhost:3001 pnpm build && pnpm size",
+    "check:full": "pnpm check:task && VITE_SERVER_URL=http://localhost:3001 pnpm build && pnpm size && pnpm e2e",
     "prepare": "simple-git-hooks",
     "e2e": "playwright test",
     "size": "pnpm --filter @clave/web size"
