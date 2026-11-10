@@ -1,0 +1,31 @@
+import { defineConfig } from '@playwright/test';
+
+const CI = Boolean(process.env.CI);
+
+/** E2E (SPEC §10.1): real server + real web app, several browser contexts as different players. */
+export default defineConfig({
+  testDir: 'e2e',
+  timeout: 60_000,
+  fullyParallel: false,
+  workers: 1,
+  retries: CI ? 1 : 0,
+  reporter: CI ? [['list'], ['html', { open: 'never' }]] : 'list',
+  use: {
+    baseURL: 'http://localhost:5173',
+    trace: 'off',
+    viewport: { width: 1280, height: 800 },
+  },
+  webServer: [
+    {
+      command: 'pnpm --filter @clave/server dev',
+      url: 'http://localhost:3001/health',
+      reuseExistingServer: !CI,
+      env: { CLIENT_ORIGIN: 'http://localhost:5173', LOG_LEVEL: 'warn' },
+    },
+    {
+      command: 'pnpm --filter @clave/web dev',
+      url: 'http://localhost:5173',
+      reuseExistingServer: !CI,
+    },
+  ],
+});
