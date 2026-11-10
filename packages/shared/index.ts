@@ -8,6 +8,7 @@ export {
 } from './engine/clue';
 export { mulberry32, pick, randomId, shuffle, type Rng } from './engine/rng';
 export { BOARD_SIZE, chooseWords, rotateSpymasters } from './engine/setup';
+export { gameStats, type GameStats, type TeamStats } from './engine/stats';
 export * from './engine/types';
 export { HEALTH_PATH, healthResponseSchema, type HealthResponse } from './schemas/health';
 export {
