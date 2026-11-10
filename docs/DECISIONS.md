@@ -163,3 +163,13 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Sala vacía**: se borra 30 min después de que no quede nadie conectado, contando desde la creación si nunca entró nadie. El lugar de un desconectado se libera a los 60 s solo en el lobby (durante la partida se decide en M3).
 - **Sortear**: equipos balanceados al azar y un jefe al azar en cada uno; los espectadores no se tocan.
 - **E2E desde M2**: Playwright se instala en M2 (CONSTRAINTS lo ponía en M3) porque es la única forma de verificar los criterios de M2 con 4 pestañas.
+
+## ADR-021 — Partida en el server y vistas (M3)
+
+- **Estado**: Aceptada (2026-11-10, M3, modo autónomo)
+- **Única salida**: el estado de partida sale del server solo por `toPublicView` (`apps/server/src/views/gameView.ts`). `type` va si la carta está revelada, si terminó la partida (§3.1: mapa completo al final), si quien mira es jefe, o si es espectador y la sala habilitó "espectadores ven el mapa". Quien entra a mitad de partida mira como espectador.
+- **Marcas de señalar**: las ven solo los integrantes del equipo activo (y sus eventos `CARD_POINTED` se filtran igual). Es charla interna del equipo; el SPEC no dice que el rival las vea.
+- **Pausa** (§2.4): la partida está en pausa mientras el jefe del equipo activo no esté conectado (en cualquier fase de su turno). Durante la pausa se rechazan las acciones de juego (`GAME_PAUSED`). El host reasigna con un compañero conectado del mismo equipo (`SET_SPYMASTER`).
+- **Lugares en partida**: durante la partida no se liberan lugares por desconexión (el motor necesita a los jugadores). Si el **host** lleva 60 s desconectado, el rol de host pasa al jugador conectado más antiguo, para que siempre haya alguien que pueda reasignar un jefe y la partida no quede trabada.
+- **Volver al lobby**: el host puede volver al lobby en cualquier momento de la partida (no solo al final), para destrabar partidas que perdieron jugadores. Las palabras de esa partida se evitan en la próxima.
+- **Timers y objeciones**: el motor ya los soporta, pero su UI y los timers del server van en M7, como lista el SPEC §12.
