@@ -213,6 +213,18 @@ describe('startBlockers (SPEC §3.1)', () => {
     expect(room.startBlockers()).toEqual([]);
   });
 
+  it('flags a disconnected spymaster and teams without a connected agent (M3 review M4)', () => {
+    const [a, b, c] = fourPlayers();
+    room.setRole(a ?? '', 'spymaster');
+    room.setRole(b ?? '', 'spymaster');
+    room.setConnected(a ?? '', false, 0);
+    room.setConnected(c ?? '', false, 0);
+    expect(room.startBlockers()).toEqual([
+      { code: 'SPYMASTER_AWAY', team: 'red' },
+      { code: 'NO_AGENT', team: 'red' },
+    ]);
+  });
+
   it('flags missing words and the cooperative mode', () => {
     const [a, b] = fourPlayers();
     room.setRole(a ?? '', 'spymaster');

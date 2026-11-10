@@ -94,7 +94,9 @@ export const t = {
         case 'TOO_MANY_SPYMASTERS':
           return `Hay más de un jefe en el ${names[b.team]}`;
         case 'NO_AGENT':
-          return `Falta al menos un agente en el ${names[b.team]}`;
+          return `Falta al menos un agente conectado en el ${names[b.team]}`;
+        case 'SPYMASTER_AWAY':
+          return `El jefe del ${names[b.team]} está desconectado`;
         case 'NOT_ENOUGH_WORDS':
           return 'Faltan palabras: elegí un mazo o cargá al menos 25.';
         case 'MODE_NOT_AVAILABLE':
@@ -167,6 +169,11 @@ export const t = {
     guessWrong: (type: string) => `✗ (${type})`,
     pausedWaiting: (name: string) => `Esperando a ${name}…`,
     pausedHint: 'La partida sigue cuando vuelva, o cuando el host elija otro jefe.',
+    pausedNoAgents: (team: string) => `El ${team} se quedó sin agentes conectados.`,
+    pausedAgentsHint: 'La partida sigue cuando vuelva alguno.',
+    theSpymaster: 'el jefe',
+    endGame: 'Terminar la partida y volver al lobby',
+    endGameConfirm: '¿Seguro? Se termina la partida para todos.',
     reassignLabel: 'Nuevo jefe',
     reassign: 'Hacer jefe',
     win: (team: string) => `¡Misión cumplida! Ganó el ${team}.`,
@@ -219,6 +226,9 @@ export const t = {
     INTERNAL: 'Algo se rompió de nuestro lado. Probá de nuevo.',
     NOT_PLAYING: 'No hay partida en curso.',
     GAME_PAUSED: 'La partida está en pausa hasta que vuelva el jefe.',
+    NOT_PAUSED: 'Solo se cambia el jefe cuando la partida está en pausa por su ausencia.',
+    PLAYER_UNAVAILABLE: 'Tiene que ser un agente conectado de ese equipo.',
+    NO_AGENT_LEFT: 'Si lo hacés jefe, el equipo se queda sin agentes para adivinar.',
     CANNOT_START: 'Todavía no se puede empezar: faltan jugadores o palabras.',
     GAME_IN_PROGRESS: 'Ya hay una partida en curso.',
     NO_GAME: 'No hay ninguna partida en curso.',

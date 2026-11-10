@@ -122,8 +122,9 @@ describe('pause and spymaster reassignment (SPEC §2.4)', () => {
     room.setConnected(spymaster(otherTeam(team)), false, 0);
     expect(room.paused()).toBeNull();
     room.setConnected(spymaster(team), false, 0);
-    expect(room.paused()).toEqual({ team, spymasterId: spymaster(team) });
-    expect(room.view('p3').game?.paused).toEqual({ team, spymasterId: spymaster(team) });
+    const expected = { team, reason: 'spymaster', waitingFor: [spymaster(team)] };
+    expect(room.paused()).toEqual(expected);
+    expect(room.view('p3').game?.paused).toEqual(expected);
     expect(
       code(() =>
         room.act(spymaster(team), {
@@ -138,19 +139,34 @@ describe('pause and spymaster reassignment (SPEC §2.4)', () => {
     expect(room.paused()).toBeNull();
   });
 
-  it('host reassigns the spymaster to a connected teammate', () => {
+  it('pauses while the guessing team has no agent connected', () => {
+    const team = activeTeam();
+    room.act(spymaster(team), {
+      type: 'GIVE_CLUE',
+      playerId: spymaster(team),
+      word: 'QXZ',
+      count: 1,
+    });
+    room.setConnected(agent(team), false, 0);
+    expect(room.paused()).toEqual({ team, reason: 'agents', waitingFor: [agent(team)] });
+  });
+
+  it('refuses to reassign when not paused, or for the other team (M3 review C2)', () => {
+    const team = activeTeam();
+    expect(code(() => room.setSpymaster('p1', agent(team)))).toBe('NOT_PAUSED');
+    expect(code(() => room.setSpymaster('p1', 'p1'))).toBe('NOT_PAUSED');
+    room.setConnected(spymaster(team), false, 0);
+    room.expireDisconnected(60_000); // in case the host was the one who dropped
+    expect(code(() => room.setSpymaster(room.hostId, agent(otherTeam(team))))).toBe(
+      'PLAYER_UNAVAILABLE',
+    );
+  });
+
+  it('refuses a swap that would leave the team without agents (M3 review I1)', () => {
     const team = activeTeam();
     room.setConnected(spymaster(team), false, 0);
-    // If the host itself is the missing spymaster, after 60 s another player takes over.
     room.expireDisconnected(60_000);
-    const host = room.hostId;
-    expect(room.players.find((p) => p.id === host)?.connected).toBe(true);
-    expect(code(() => room.setSpymaster(agent(otherTeam(team)), agent(team)))).toBe('NOT_HOST');
-    room.setSpymaster(host, agent(team));
-    expect(room.paused()).toBeNull();
-    expect(room.players.find((p) => p.id === agent(team))?.role).toBe('spymaster');
-    room.setConnected(agent(otherTeam(team)), false, 0);
-    expect(code(() => room.setSpymaster(host, agent(otherTeam(team))))).toBe('WRONG_TEAM');
+    expect(code(() => room.setSpymaster(room.hostId, agent(team)))).toBe('NO_AGENT_LEFT');
   });
 
   it('keeps disconnected seats during a game', () => {
@@ -167,6 +183,63 @@ describe('pause and spymaster reassignment (SPEC §2.4)', () => {
     room.setConnected('p1', false, 200_000);
     expect(room.expireDisconnected(260_000)).toEqual([{ type: 'HOST_CHANGED', playerId: 'p2' }]);
     expect(room.hostId).toBe('p2');
+  });
+});
+
+describe('reassignment with three per team', () => {
+  /** p1/p3/p5 red, p2/p4/p6 blue; p1 and p2 spymasters; p1 is host. */
+  beforeEach(() => {
+    room = new Room('KTRX', 0);
+    for (const [i, n] of ['Ana', 'Beto', 'Caro', 'Dani', 'Eli', 'Fede'].entries()) {
+      room.join(profile(n), 0, { id: `p${i + 1}`, token: `token-${i}-${'x'.repeat(20)}` });
+    }
+    room.setRole('p1', 'spymaster');
+    room.setRole('p2', 'spymaster');
+    room.start('p1', mulberry32(2));
+    if (activeTeam() === 'red') {
+      // Make blue the active team so the host (red) isn't the missing spymaster.
+      room.act('p1', { type: 'GIVE_CLUE', playerId: 'p1', word: 'QXZ', count: 1 });
+      room.act('p3', {
+        type: 'REVEAL_CARD',
+        playerId: 'p3',
+        cardId: room.game?.cards.find((c) => c.type === 'civilian')?.id ?? '',
+      });
+    }
+  });
+
+  it('promotes a connected agent and benches the old spymaster as a spectator', () => {
+    expect(activeTeam()).toBe('blue');
+    room.setConnected('p2', false, 0);
+    expect(code(() => room.setSpymaster('p3', 'p4'))).toBe('NOT_HOST');
+    room.setSpymaster('p1', 'p4');
+    expect(room.paused()).toBeNull();
+    expect(room.players.find((p) => p.id === 'p4')).toMatchObject({
+      team: 'blue',
+      role: 'spymaster',
+    });
+    // Back again, the old spymaster watches without the map and can't act.
+    room.setConnected('p2', true, 0);
+    expect(room.players.find((p) => p.id === 'p2')).toMatchObject({ team: 'spectator' });
+    expect(room.view('p2').game?.seesMap).toBe(false);
+    expect(room.view('p2').game?.cards.some((c) => !c.revealed && c.type)).toBe(false);
+    expect(code(() => room.act('p2', { type: 'END_GUESSING', playerId: 'p2' }))).not.toBe(
+      'NO_ERROR',
+    );
+  });
+});
+
+describe('kick during a game (M3 review I3)', () => {
+  it('tells the engine the player is gone, so majority reveal still works', () => {
+    room = new Room('KTRX', 0);
+    for (const [i, n] of ['Ana', 'Beto', 'Caro', 'Dani', 'Eli'].entries()) {
+      room.join(profile(n), 0, { id: `p${i + 1}`, token: `token-${i}-${'x'.repeat(20)}` });
+    }
+    room.setRole('p1', 'spymaster');
+    room.setRole('p2', 'spymaster');
+    room.updateSettings('p1', { revealMode: 'majority' });
+    room.start('p1', mulberry32(3));
+    room.kick('p1', 'p5'); // a red agent
+    expect(room.game?.players.find((p) => p.id === 'p5')?.connected).toBe(false);
   });
 });
 
@@ -190,6 +263,27 @@ describe('after the game', () => {
     expect(room.status).toBe('playing');
     expect(room.players.find((p) => p.id === 'p3')?.role).toBe('spymaster');
     expect(room.players.find((p) => p.id === 'p1')?.role).toBe('agent');
+  });
+
+  it('rematch uses who is in the room now (M3 review I4)', () => {
+    room.start('p1', mulberry32(1));
+    room.join(profile('Eli'), 0, { id: 'p5', token: 'z'.repeat(32) }); // joins mid-game: watches
+    finish();
+    room.rematch('p1', false);
+    expect(room.game?.players.map((p) => p.id).sort()).toEqual(['p1', 'p2', 'p3', 'p4', 'p5']);
+    expect(room.game?.players.find((p) => p.id === 'p5')?.team).toBe('spectator');
+  });
+
+  it('rematch refuses when a team has no connected spymaster or agent', () => {
+    room.start('p1', mulberry32(1));
+    finish();
+    room.setConnected('p4', false, 0); // blue's next spymaster after rotation
+    expect(code(() => room.rematch('p1', false))).toBe('CANNOT_START');
+  });
+
+  it('rematch is only for a finished game', () => {
+    room.start('p1', mulberry32(1));
+    expect(code(() => room.rematch('p1', false))).toBe('GAME_IN_PROGRESS');
   });
 
   it('back to lobby drops the game and avoids its words next time', () => {

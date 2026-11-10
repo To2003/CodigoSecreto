@@ -7,6 +7,7 @@ import { GameOverPanel } from '../components/game/GameOverPanel';
 import { PauseOverlay } from '../components/game/PauseOverlay';
 import { TeamPanel } from '../components/game/TeamPanel';
 import { t } from '../i18n/es-AR';
+import { backToLobby } from '../net/client';
 import { useRoom } from '../store/room';
 
 /** One line about what just happened, read by screen readers too (SPEC §10 aria-live). */
@@ -20,6 +21,36 @@ function lastNews(events: RoomEvent[], teamName: (team: Team) => string): string
     if (e.type === 'CLUE_GIVEN') return t.game.yourTurnAgents(t.game.clueLine(e.word, e.count));
   }
   return null;
+}
+
+/** Host escape hatch (ADR-021): ends the game for everyone, with a confirm step. */
+function EndGameButton() {
+  const [confirming, setConfirming] = useState(false);
+  if (!confirming) {
+    return (
+      <button
+        type="button"
+        className="text-sm text-paper/70 underline"
+        onClick={() => {
+          setConfirming(true);
+        }}
+      >
+        {t.game.backToLobby}
+      </button>
+    );
+  }
+  return (
+    <span className="flex items-center gap-2 text-sm">
+      {t.game.endGameConfirm}
+      <button
+        type="button"
+        className="font-semibold text-red-soft underline"
+        onClick={() => void backToLobby()}
+      >
+        {t.game.endGame}
+      </button>
+    </span>
+  );
 }
 
 export function Game({ view }: { view: RoomView }) {
@@ -66,6 +97,7 @@ export function Game({ view }: { view: RoomView }) {
             </label>
           )}
           <ConnectionIndicator />
+          {view.youId === view.hostId && <EndGameButton />}
         </div>
       </header>
 
@@ -83,7 +115,7 @@ export function Game({ view }: { view: RoomView }) {
         </div>
         <TeamPanel view={view} team="blue" name={teamName('blue')} />
       </div>
-      <PauseOverlay view={view} />
+      <PauseOverlay view={view} teamName={teamName} />
     </main>
   );
 }

@@ -95,7 +95,8 @@ export type TurnEndReason =
 export type GameEvent =
   | { type: 'GAME_STARTED'; startingTeam: Team }
   | { type: 'CLUE_GIVEN'; team: Team; word: string; count: ClueCount }
-  | { type: 'CARD_POINTED'; playerId: string; cardId: string | null }
+  /** `team` is the pointer's team: the server shows these only to that team. */
+  | { type: 'CARD_POINTED'; playerId: string; team: Team; cardId: string | null }
   | { type: 'CARD_REVEALED'; cardId: string; cardType: CardType; team: Team; penalty: boolean }
   | { type: 'TURN_CHANGED'; team: Team; reason: TurnEndReason }
   | { type: 'OBJECTION_OPENED'; objector: string }

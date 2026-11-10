@@ -180,8 +180,13 @@ class Turn {
     if (!next) return { code: 'NOT_A_PLAYER' };
     if (next.team !== team) return { code: 'WRONG_TEAM' };
     if (next.role === 'spymaster') return;
+    // The replaced spymaster has seen the key map: they sit out the rest of this game as a
+    // spectator instead of guessing with that knowledge (ADR-022).
     for (const p of this.s.players) {
-      if (p.team === team && p.role === 'spymaster') p.role = 'agent';
+      if (p.team === team && p.role === 'spymaster') {
+        p.team = 'spectator';
+        p.role = 'agent';
+      }
     }
     next.role = 'spymaster';
     this.s.points = Object.fromEntries(
@@ -241,13 +246,13 @@ class Turn {
       this.s.points = Object.fromEntries(
         Object.entries(this.s.points).filter(([agentId]) => agentId !== playerId),
       );
-      this.events.push({ type: 'CARD_POINTED', playerId, cardId: null });
+      this.events.push({ type: 'CARD_POINTED', playerId, team: phase.team, cardId: null });
       return;
     }
     const card = this.card(cardId);
     if (!('word' in card)) return card;
     this.s.points[playerId] = card.id;
-    this.events.push({ type: 'CARD_POINTED', playerId, cardId: card.id });
+    this.events.push({ type: 'CARD_POINTED', playerId, team: phase.team, cardId: card.id });
 
     if (this.s.settings.revealMode === 'majority') {
       const agents = this.s.players.filter(

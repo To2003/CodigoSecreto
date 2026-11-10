@@ -145,6 +145,30 @@ describe('room lifecycle over Socket.IO', () => {
     });
   });
 
+  it('shows a player as disconnected even after their socket re-joined its own seat (M3 review I2)', async () => {
+    const a = await client();
+    const b = await client();
+    const created = await a.socket.emitWithAck('room:create', profile('Ana'));
+    if (!created.ok) throw new Error('create');
+    const joined = await b.socket.emitWithAck('room:join', {
+      ...profile('Beto'),
+      roomCode: created.roomCode,
+    });
+    if (!joined.ok) throw new Error('join');
+    for (let i = 0; i < 3; i++) {
+      await b.socket.emitWithAck('room:join', {
+        ...profile('Beto'),
+        roomCode: created.roomCode,
+        playerId: joined.playerId,
+        token: joined.token,
+      });
+    }
+    b.socket.disconnect();
+    await until(
+      () => a.seen.view?.players.find((p) => p.id === joined.playerId)?.connected === false,
+    );
+  });
+
   it('gives a new seat when the token is wrong', async () => {
     const a = await client();
     const created = await a.socket.emitWithAck('room:create', profile('Ana'));

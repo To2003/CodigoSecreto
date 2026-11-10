@@ -98,11 +98,19 @@ export const backToLobby = () => request('game:backToLobby', {});
 export const reassignSpymaster = (playerId: string) => request('game:setSpymaster', { playerId });
 
 /** Re-sends room:join with the stored seat: answers with a full room:state. */
+let resyncing = false;
 function resync() {
-  if (currentCode && lastProfile) void joinRoom(currentCode, lastProfile);
+  // One at a time: several patches after a gap must not fire several joins.
+  if (resyncing || !currentCode || !lastProfile) return;
+  resyncing = true;
+  void joinRoom(currentCode, lastProfile).finally(() => {
+    resyncing = false;
+  });
 }
 
 socket.on('room:state', ({ seq, view }) => {
+  // A late answer for a room we already left must not overwrite the current one.
+  if (currentCode !== null && view.code !== currentCode) return;
   useRoom.setState({ view, seq, lastEvents: [] });
 });
 

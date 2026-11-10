@@ -173,3 +173,17 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Lugares en partida**: durante la partida no se liberan lugares por desconexión (el motor necesita a los jugadores). Si el **host** lleva 60 s desconectado, el rol de host pasa al jugador conectado más antiguo, para que siempre haya alguien que pueda reasignar un jefe y la partida no quede trabada.
 - **Volver al lobby**: el host puede volver al lobby en cualquier momento de la partida (no solo al final), para destrabar partidas que perdieron jugadores. Las palabras de esa partida se evitan en la próxima.
 - **Timers y objeciones**: el motor ya los soporta, pero su UI y los timers del server van en M7, como lista el SPEC §12.
+
+## ADR-022 — RNG criptográfico en el server y endurecimientos de la review de M3
+
+- **Estado**: Aceptada (2026-11-10, review de M3, modo autónomo). **Desvía del SPEC §1.8**: avisar a Tomás.
+- **Contexto**: SPEC §1.8 pide "RNG con seed (ej. `mulberry32`) → partidas reproducibles". La review de M3 mostró (con prueba de concepto, reproducida) que con mulberry32 sembrado con 31 bits, los IDs de carta públicos alcanzan para probar todas las seeds y reconstruir el mapa clave en ~5 s desde la consola del navegador. Eso rompe la regla de oro (§2.1).
+- **Decisión**:
+  1. El server usa un RNG criptográfico (`crypto.randomInt`, `apps/server/src/rooms/rng.ts`) para todo lo que le pasa al motor. El motor sigue puro y sigue recibiendo el RNG por parámetro: los tests, el fuzz y `simulate` usan mulberry32 con seed y siguen siendo reproducibles. Un test falla si aparece mulberry32 en código del server que no sea test.
+  2. Reasignar jefe solo durante una pausa por ausencia del jefe activo, para ese equipo, con un agente conectado, y solo si el equipo conserva al menos un agente conectado (si no, el host puede terminar la partida).
+  3. El jefe reemplazado queda **en la banca como espectador** hasta el final de esa partida: ya vio el mapa, no puede volver a adivinar.
+  4. "Espectadores ven el mapa" aplica solo a espectadores que estaban al empezar (o a jefes en la banca). Quien entra a mitad de partida nunca lo ve; si no, cualquier agente podría abrir otra ventana como espectador.
+  5. También hay pausa si el equipo activo está adivinando sin ningún agente conectado. El host puede terminar la partida desde el header o desde el overlay de pausa.
+  6. La revancha se arma con quienes están en la sala (los que se fueron quedan afuera, los que entraron a mitad juegan como espectadores) y exige jefe y agente conectados por equipo. Para empezar también se exige que el jefe esté conectado y que haya al menos un agente conectado.
+  7. Echar a alguien en partida le avisa al motor (presencia), para que el modo mayoría y las votaciones no lo esperen.
+- **Si se quiere replay**: guardar en el server una seed de 256 bits para un DRBG, que nunca salga del server. Queda en el backlog.

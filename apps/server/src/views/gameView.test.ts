@@ -92,7 +92,7 @@ describe('toPublicView', () => {
     expect(toPublicView(guessing, mine).points).toEqual(guessing.points);
     expect(toPublicView(guessing, theirs).points).toEqual({});
     expect(toPublicView(guessing, 'sp').points).toEqual({});
-    const pointed = [{ type: 'CARD_POINTED' as const, playerId: mine, cardId: 'x' }];
+    const pointed = [{ type: 'CARD_POINTED' as const, playerId: mine, team, cardId: 'x' }];
     expect(eventsFor(pointed, guessing, mine)).toEqual(pointed);
     expect(eventsFor(pointed, guessing, theirs)).toEqual([]);
     expect(eventsFor(pointed, null, theirs)).toEqual(pointed);
@@ -103,5 +103,39 @@ describe('toPublicView', () => {
     const view = toPublicView(g, 'rs');
     view.clues.push({ team: 'red', word: 'X', count: 1, guesses: [], objection: 'none' });
     expect(g.clues).toEqual([]);
+  });
+
+  it('after an accepted objection, only the penalty card shows its type (M3 review I6f)', () => {
+    let g = game();
+    const team = g.startingTeam;
+    const [giver, rivalSpy] = team === 'red' ? ['rs', 'bs'] : ['bs', 'rs'];
+    const rng = mulberry32(9);
+    const step = (action: Parameters<typeof applyAction>[1]) => {
+      const res = applyAction(g, action, rng);
+      if (!res.ok) throw new Error(res.error.code);
+      g = res.state;
+      return res.events;
+    };
+    step({ type: 'GIVE_CLUE', playerId: giver, word: 'QXZ', count: 1 });
+    step({ type: 'OBJECT_CLUE', playerId: rivalSpy });
+    const rivalAgent = team === 'red' ? 'ba' : 'ra';
+    const ownAgent = team === 'red' ? 'ra' : 'ba';
+    const events = [
+      ...step({ type: 'VOTE_OBJECTION', playerId: rivalAgent, accept: true }),
+      ...(g.phase.name === 'objection'
+        ? step({ type: 'VOTE_OBJECTION', playerId: ownAgent, accept: true })
+        : []),
+    ];
+    const penalty = events.find((e) => e.type === 'CARD_REVEALED');
+    expect(penalty).toMatchObject({ penalty: true });
+    for (const viewer of ['ra', 'ba', 'sp']) {
+      const view = toPublicView(g, viewer);
+      const typed = view.cards.filter((c) => c.type !== undefined);
+      expect(
+        typed.map((c) => c.id),
+        viewer,
+      ).toEqual([penalty?.type === 'CARD_REVEALED' ? penalty.cardId : '']);
+      expect(view.clues.at(-1)?.penaltyCardId).toBe(typed[0]?.id);
+    }
   });
 });

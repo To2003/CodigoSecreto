@@ -472,7 +472,9 @@ describe('POINT_CARD', () => {
     if (!a || !b) throw new Error('setup');
     let res = ok(s, { type: 'POINT_CARD', playerId: agent(team), cardId: a.id });
     expect(res.state.points).toEqual({ [agent(team)]: a.id });
-    expect(res.events).toEqual([{ type: 'CARD_POINTED', playerId: agent(team), cardId: a.id }]);
+    expect(res.events).toEqual([
+      { type: 'CARD_POINTED', playerId: agent(team), team, cardId: a.id },
+    ]);
     s = ok(res.state, { type: 'POINT_CARD', playerId: agent2(team), cardId: a.id }).state;
     s = ok(s, { type: 'POINT_CARD', playerId: agent(team), cardId: b.id }).state;
     expect(s.points).toEqual({ [agent(team)]: b.id, [agent2(team)]: a.id });
@@ -799,7 +801,7 @@ describe('purity', () => {
 });
 
 describe('SET_SPYMASTER (host reassigns, SPEC §2.4)', () => {
-  it('swaps roles within the team and drops the new spymaster point', () => {
+  it('promotes the agent, benches the old spymaster as a spectator, drops the new point', () => {
     let s = clue(start());
     const team = activeTeam(s);
     s = ok(s, {
@@ -810,7 +812,10 @@ describe('SET_SPYMASTER (host reassigns, SPEC §2.4)', () => {
     const res = ok(s, { type: 'SET_SPYMASTER', team, playerId: agent2(team) });
     const roles = Object.fromEntries(res.state.players.map((p) => [p.id, p.role]));
     expect(roles[agent2(team)]).toBe('spymaster');
-    expect(roles[spy(team)]).toBe('agent');
+    expect(res.state.players.find((p) => p.id === spy(team))).toMatchObject({
+      team: 'spectator',
+      role: 'agent',
+    });
     expect(res.state.points).toEqual({});
     expect(res.events).toEqual([{ type: 'SPYMASTER_CHANGED', team, playerId: agent2(team) }]);
   });

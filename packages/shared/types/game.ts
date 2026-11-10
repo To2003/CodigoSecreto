@@ -25,6 +25,9 @@ export interface GameView {
   remaining: Record<Team, number>;
   /** Whether this player's cards carry types. */
   seesMap: boolean;
-  /** Set while the active team's spymaster is disconnected (SPEC §2.4). */
-  paused: { team: Team; spymasterId: string } | null;
+  /**
+   * Set while the active team can't move (SPEC §2.4): its spymaster is away, or it is guessing
+   * with no agent connected. `waitingFor` lists who could unblock it by coming back.
+   */
+  paused: { team: Team; reason: 'spymaster' | 'agents'; waitingFor: string[] } | null;
 }

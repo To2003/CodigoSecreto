@@ -2,14 +2,15 @@ import { timingSafeEqual } from 'node:crypto';
 import {
   applyAction,
   chooseWords,
+  rotateSpymasters,
   MAX_PLAYERS,
-  mulberry32,
   sanitizeNickname,
   settingsSchema,
   shuffle,
   TEAMS,
   DEFAULT_SETTINGS,
   type Action,
+  type EnginePlayer,
   type ErrorCode,
   type ErrorPayload,
   type GameState,
@@ -28,6 +29,23 @@ import {
   type Team,
 } from '@clave/shared';
 import { toPublicView } from '../views/gameView';
+
+/** Team problems that keep a game from starting: a connected spymaster and agent per team. */
+export function teamBlockers(players: readonly EnginePlayer[]): StartBlocker[] {
+  const blockers: StartBlocker[] = [];
+  for (const team of TEAMS) {
+    const members = players.filter((p) => p.team === team);
+    const spymasters = members.filter((p) => p.role === 'spymaster');
+    if (spymasters.length === 0) blockers.push({ code: 'NO_SPYMASTER', team });
+    if (spymasters.length > 1) blockers.push({ code: 'TOO_MANY_SPYMASTERS', team });
+    if (spymasters.length === 1 && !spymasters[0]?.connected) {
+      blockers.push({ code: 'SPYMASTER_AWAY', team });
+    }
+    if (!members.some((p) => p.role === 'agent' && p.connected))
+      blockers.push({ code: 'NO_AGENT', team });
+  }
+  return blockers;
+}
 
 /** Grace period a disconnected player keeps their place (SPEC §2.4). */
 export const RECONNECT_GRACE_MS = 60_000;
@@ -183,6 +201,7 @@ export class Room {
     this.requireHost(by);
     if (by === target) throw new RoomError('CANNOT_KICK_SELF');
     this.player(target);
+    this.syncPresence(target, false);
     return this.remove(target, { type: 'PLAYER_KICKED', playerId: target });
   }
 
@@ -253,15 +272,9 @@ export class Room {
   startBlockers(): StartBlocker[] {
     const blockers: StartBlocker[] = [];
     if (this.settings.mode !== 'classic') blockers.push({ code: 'MODE_NOT_AVAILABLE' });
-    for (const team of TEAMS) {
-      const members = this.players.filter((p) => p.team === team);
-      const spymasters = members.filter((p) => p.role === 'spymaster').length;
-      if (spymasters === 0) blockers.push({ code: 'NO_SPYMASTER', team });
-      if (spymasters > 1) blockers.push({ code: 'TOO_MANY_SPYMASTERS', team });
-      if (members.length - spymasters === 0) blockers.push({ code: 'NO_AGENT', team });
-    }
-    // Same word selection the engine runs at start, with a throwaway rng.
-    if (!chooseWords(this.settings, mulberry32(0))) blockers.push({ code: 'NOT_ENOUGH_WORDS' });
+    blockers.push(...teamBlockers(this.players));
+    // Same word selection the engine runs at start; only the count matters, so any rng will do.
+    if (!chooseWords(this.settings, () => 0)) blockers.push({ code: 'NOT_ENOUGH_WORDS' });
     return blockers;
   }
 
@@ -278,10 +291,13 @@ export class Room {
     if (!res.ok) throw new RoomError(res.error.code, res.error.clue);
     this.game = res.state;
     this.rng = rng;
-    // Roles can change in the engine (rematch rotation, reassigned spymaster): mirror them.
+    // Teams and roles can change in the engine (benched spymaster, rotation): mirror them.
     for (const p of this.players) {
       const inGame = res.state.players.find((g) => g.id === p.id);
-      if (inGame) p.role = inGame.role;
+      if (inGame) {
+        p.team = inGame.team;
+        p.role = inGame.role;
+      }
     }
     for (const e of res.events) {
       if (e.type === 'GAME_STARTED') this.status = 'playing';
@@ -293,32 +309,47 @@ export class Room {
     return res.events;
   }
 
-  start(by: string, rng: Rng): RoomEvent[] {
-    this.requireHost(by);
-    this.requireLobby();
-    if (this.startBlockers().length > 0) throw new RoomError('CANNOT_START');
-    const players = this.players.map(({ id, team, role, connected }) => ({
-      id,
-      team,
-      role,
-      connected,
-    }));
-    this.game = null;
+  private newGame(players: EnginePlayer[], rng: Rng): RoomEvent[] {
+    const words = this.game?.cards.map((c) => c.word);
+    if (words) this.previousWords = words;
     return this.apply(
       { type: 'START_GAME', players, settings: this.settings, excludeWords: this.previousWords },
       rng,
     );
   }
 
-  /** SPEC §2.4: the game pauses while the active team's spymaster is disconnected. */
+  private enginePlayers(): EnginePlayer[] {
+    return this.players.map(({ id, team, role, connected }) => ({ id, team, role, connected }));
+  }
+
+  start(by: string, rng: Rng): RoomEvent[] {
+    this.requireHost(by);
+    this.requireLobby();
+    if (this.startBlockers().length > 0) throw new RoomError('CANNOT_START');
+    this.game = null;
+    return this.newGame(this.enginePlayers(), rng);
+  }
+
+  /**
+   * SPEC §2.4: the game pauses while the active team's spymaster is away. It also pauses while the
+   * active team is guessing with no agent connected, since nobody could move (M3 review).
+   */
   paused(): GameView['paused'] {
     const game = this.game;
     if (!game || game.phase.name === 'over') return null;
     const team = game.phase.team;
+    const here = (id: string) => this.players.some((p) => p.id === id && p.connected);
     const spymaster = game.players.find((p) => p.team === team && p.role === 'spymaster');
-    if (!spymaster) return null;
-    const present = this.players.some((p) => p.id === spymaster.id && p.connected);
-    return present ? null : { team, spymasterId: spymaster.id };
+    if (spymaster && !here(spymaster.id)) {
+      return { team, reason: 'spymaster', waitingFor: [spymaster.id] };
+    }
+    if (game.phase.name !== 'clue') {
+      const agents = game.players.filter((p) => p.team === team && p.role === 'agent');
+      if (!agents.some((a) => here(a.id))) {
+        return { team, reason: 'agents', waitingFor: agents.map((a) => a.id) };
+      }
+    }
+    return null;
   }
 
   act(playerId: string, action: PlayerAction): RoomEvent[] {
@@ -328,20 +359,42 @@ export class Room {
     return this.apply(action, rng);
   }
 
-  /** Host picks a connected teammate as the new spymaster of that player's team. */
+  /**
+   * Host only, and only to unblock a pause caused by the active spymaster being away (SPEC §2.4):
+   * a connected agent of that team takes over, and the team must keep at least one connected agent.
+   */
   setSpymaster(by: string, playerId: string): RoomEvent[] {
     this.requireHost(by);
     const { game, rng } = this.requireGame();
-    const target = this.player(playerId);
-    const team = game.players.find((p) => p.id === playerId)?.team;
-    if (!target.connected || !team || team === 'spectator') throw new RoomError('WRONG_TEAM');
-    return this.apply({ type: 'SET_SPYMASTER', team, playerId }, rng);
+    const pause = this.paused();
+    if (pause?.reason !== 'spymaster') throw new RoomError('NOT_PAUSED');
+    const candidate = game.players.find((p) => p.id === playerId);
+    const present = this.players.some((p) => p.id === playerId && p.connected);
+    if (!candidate || !present || candidate.team !== pause.team || candidate.role !== 'agent') {
+      throw new RoomError('PLAYER_UNAVAILABLE');
+    }
+    const agentsLeft = game.players.filter(
+      (p) =>
+        p.team === pause.team &&
+        p.role === 'agent' &&
+        p.id !== playerId &&
+        this.players.some((r) => r.id === p.id && r.connected),
+    );
+    if (agentsLeft.length === 0) throw new RoomError('NO_AGENT_LEFT');
+    return this.apply({ type: 'SET_SPYMASTER', team: pause.team, playerId }, rng);
   }
 
+  /**
+   * Same teams as they are in the room now (who left is out, who joined mid-game is in as a
+   * spectator), spymasters rotated unless asked to keep them (SPEC §9).
+   */
   rematch(by: string, keepSpymasters: boolean): RoomEvent[] {
     this.requireHost(by);
     const { rng } = this.requireGame();
-    return this.apply({ type: 'REMATCH', keepSpymasters }, rng);
+    if (this.status !== 'over') throw new RoomError('GAME_IN_PROGRESS');
+    const players = keepSpymasters ? this.enginePlayers() : rotateSpymasters(this.enginePlayers());
+    if (teamBlockers(players).length > 0) throw new RoomError('CANNOT_START');
+    return this.newGame(players, rng);
   }
 
   backToLobby(by: string): RoomEvent[] {

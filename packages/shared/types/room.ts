@@ -20,6 +20,7 @@ export type StartBlocker =
   | { code: 'NO_SPYMASTER'; team: Team }
   | { code: 'TOO_MANY_SPYMASTERS'; team: Team }
   | { code: 'NO_AGENT'; team: Team }
+  | { code: 'SPYMASTER_AWAY'; team: Team }
   | { code: 'NOT_ENOUGH_WORDS' }
   | { code: 'MODE_NOT_AVAILABLE' };
 
@@ -74,6 +75,9 @@ export type ErrorCode =
   | 'NOT_PLAYING'
   | 'GAME_PAUSED'
   | 'CANNOT_START'
+  | 'NOT_PAUSED'
+  | 'PLAYER_UNAVAILABLE'
+  | 'NO_AGENT_LEFT'
   | EngineErrorCode;
 
 export interface ErrorPayload {

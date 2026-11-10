@@ -14,10 +14,13 @@ export function toPublicView(
   const viewer = game.players.find((p) => p.id === viewerId);
   const team = viewer?.team ?? 'spectator';
   const over = game.phase.name === 'over';
+  // "Spectators see the map" covers spectators who were in the game from the start (or were
+  // benched after seeing it). Someone joining mid-game never does: otherwise any agent could open
+  // a second window as a spectator and read the map (M3 review).
   const seesMap =
     over ||
-    (team !== 'spectator' && viewer?.role === 'spymaster') ||
-    (team === 'spectator' && game.settings.spectatorsSeeMap);
+    (viewer?.team !== 'spectator' && viewer?.role === 'spymaster') ||
+    (viewer?.team === 'spectator' && game.settings.spectatorsSeeMap);
 
   const remaining = Object.fromEntries(
     TEAMS.map((t) => [t, game.cards.filter((c) => c.type === t && !c.revealed).length]),
@@ -42,9 +45,9 @@ function seesPoints(game: GameState, team: Team | 'spectator') {
   return game.phase.name !== 'over' && game.phase.name !== 'clue' && team === game.phase.team;
 }
 
-/** Events a viewer may receive. Pointing is private to the active team, like the points. */
+/** Events a viewer may receive. Pointing is private to the pointer's team, like the points. */
 export function eventsFor(events: RoomEvent[], game: GameState | null, viewerId: string) {
   if (!game) return events;
   const team = game.players.find((p) => p.id === viewerId)?.team ?? 'spectator';
-  return events.filter((e) => e.type !== 'CARD_POINTED' || seesPoints(game, team));
+  return events.filter((e) => e.type !== 'CARD_POINTED' || e.team === team);
 }

@@ -1,7 +1,6 @@
-import { randomBytes, randomUUID, randomInt } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import {
   clientEvents,
-  mulberry32,
   type Ack,
   type ClientEventName,
   type ClientToServerEvents,
@@ -17,6 +16,7 @@ import { ERROR_MESSAGES } from '../messages';
 import { RoomError, type PlayerAction, type Room } from '../rooms/room';
 import type { RoomStore } from '../rooms/store';
 import { eventsFor } from '../views/gameView';
+import { cryptoRng } from '../rooms/rng';
 import { TokenBucket } from './rateLimit';
 
 interface SocketData {
@@ -52,7 +52,7 @@ export function broadcast(io: IoServer, room: Room, events: RoomEvent[]) {
 }
 
 /** Counts open sockets per seat, so a second tab (or F5 overlap) doesn't flip presence. */
-const openSockets = new Map<string, number>();
+const openSockets = new Map<string, Set<string>>();
 
 export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
   const { io, store, log, now } = ctx;
@@ -104,7 +104,11 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
   /** Binds this socket to a seat and sends the full state. */
   const attach = (room: Room, playerId: string) => {
     const key = channel(room.code, playerId);
-    openSockets.set(key, (openSockets.get(key) ?? 0) + 1);
+    // A set of socket ids, not a counter: the same socket re-joining its own seat (a resync)
+    // must not count twice, or the seat would never show as disconnected (M3 review).
+    const sockets = openSockets.get(key) ?? new Set<string>();
+    sockets.add(socket.id);
+    openSockets.set(key, sockets);
     socket.data = { roomCode: room.code, playerId };
     void socket.join(key);
     socket.emit('room:state', { seq: room.seq, view: room.view(playerId) });
@@ -117,11 +121,9 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
     if (!roomCode || !playerId) return;
     const key = channel(roomCode, playerId);
     void socket.leave(key);
-    const left = (openSockets.get(key) ?? 1) - 1;
-    if (left > 0) {
-      openSockets.set(key, left);
-      return;
-    }
+    const sockets = openSockets.get(key);
+    sockets?.delete(socket.id);
+    if (sockets && sockets.size > 0) return;
     openSockets.delete(key);
     const room = store.get(roomCode);
     if (!markDisconnected || !room?.players.some((p) => p.id === playerId)) return;
@@ -205,7 +207,8 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
     return undefined;
   });
 
-  const seed = () => mulberry32(randomInt(2 ** 31));
+  // Crypto randomness for every game (ADR-022): never a seeded PRNG on the server.
+  const seed = () => cryptoRng;
   const game = (build: (playerId: string) => PlayerAction) => {
     const { room, playerId } = current();
     broadcast(io, room, room.act(playerId, build(playerId)));
