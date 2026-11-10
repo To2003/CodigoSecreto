@@ -21,3 +21,20 @@ export {
   type Settings,
 } from './schemas/settings';
 export { DECKS, getDeck, type Deck } from './words';
+export {
+  AVATAR_COLORS,
+  AVATAR_COUNT,
+  clientEvents,
+  MAX_NICKNAME_LENGTH,
+  MAX_PLAYERS,
+  ROOM_CODE_ALPHABET,
+  ROOM_CODE_LENGTH,
+  roomCodeSchema,
+  sanitizeNickname,
+  type AvatarColor,
+  type ClientEventName,
+  type ClientPayload,
+  type Profile,
+} from './schemas/events';
+export { settingsPatchSchema, type SettingsPatch } from './schemas/settings';
+export type * from './types/room';

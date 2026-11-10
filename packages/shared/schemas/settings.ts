@@ -34,6 +34,22 @@ export const settingsSchema = z
   .strict();
 
 export type Settings = z.infer<typeof settingsSchema>;
+
+type Shape = typeof settingsSchema.shape;
+type PatchShape = { [K in keyof Shape]: z.ZodOptional<ReturnType<Shape[K]['unwrap']>> };
+
+/**
+ * A partial update from the host's settings panel. Unlike `settingsSchema.partial()`, missing keys
+ * stay missing instead of being filled with defaults, so a patch never resets other options.
+ */
+export const settingsPatchSchema = z
+  .object(
+    Object.fromEntries(
+      Object.entries(settingsSchema.shape).map(([key, field]) => [key, field.unwrap().optional()]),
+    ) as PatchShape,
+  )
+  .strict();
+export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
 export const DEFAULT_SETTINGS: Settings = settingsSchema.parse({});
 
 const CUSTOM_WORD = /^\p{L}{2,14}$/u;
