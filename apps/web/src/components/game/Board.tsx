@@ -99,19 +99,6 @@ function Card({ card, view, showMap }: { card: PublicCard; view: RoomView; showM
             {type && (
               <span className={`absolute inset-y-0 left-0 w-1.5 sm:w-2 ${KEY_BAND[type]}`} />
             )}
-            {type && colorBlind && (
-              <TypeIcon
-                type={type}
-                className="absolute top-1 right-1.5 text-[0.65rem] sm:text-sm"
-              />
-            )}
-            {/* Mirrored word, as on a physical card read from across the table (SPEC §5.4). */}
-            <span
-              aria-hidden="true"
-              className="absolute inset-x-2 top-1 hidden rotate-180 text-center font-card text-[0.6rem] tracking-wide text-ink/35 uppercase sm:block"
-            >
-              {card.word}
-            </span>
             <span className="absolute inset-x-1 top-1/2 -translate-y-1/2 text-center sm:inset-x-2.5">
               <FitText
                 text={card.word}
@@ -121,6 +108,22 @@ function Card({ card, view, showMap }: { card: PublicCard; view: RoomView; showM
           </span>
         )}
       </button>
+      {/* Decorations sit outside the button so its accessible name is just the word (WCAG 2.5.3). */}
+      {!card.revealed && (
+        // Mirrored word, as on a physical card read from across the table (SPEC §5.4).
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-2 top-1 hidden rotate-180 text-center font-card text-[0.6rem] tracking-wide text-ink/35 uppercase sm:block"
+        >
+          {card.word}
+        </span>
+      )}
+      {!card.revealed && type && colorBlind && (
+        <TypeIcon
+          type={type}
+          className="pointer-events-none absolute top-1 right-1.5 text-[0.65rem] text-ink sm:text-sm"
+        />
+      )}
       {pointers.length > 0 && (
         <div
           className="pointer-events-none absolute -top-2 left-1 flex -space-x-2"

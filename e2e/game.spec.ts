@@ -1,23 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createRoom, joinByLink, newPlayer, team, type Player } from './helpers';
+import { startGame, type Player } from './helpers';
 
 type Team = 'red' | 'blue';
-
-/** Ana (host) and Caro red, Beto and Dani blue (lobby auto-balance); Ana and Beto spymasters. */
-async function startGame(browser: Parameters<typeof newPlayer>[0]) {
-  const [ana, beto, caro, dani] = await Promise.all(
-    ['Ana', 'Beto', 'Caro', 'Dani'].map((name) => newPlayer(browser, name)),
-  );
-  if (!ana || !beto || !caro || !dani) throw new Error('setup');
-  const code = await createRoom(ana);
-  for (const p of [beto, caro, dani]) await joinByLink(p, code);
-  await team(ana.page, 'Equipo Rojo').getByRole('button', { name: 'Ser jefe' }).click();
-  await team(beto.page, 'Equipo Azul').getByRole('button', { name: 'Ser jefe' }).click();
-  await ana.page.getByRole('button', { name: 'Empezar' }).click();
-  for (const p of [ana, beto, caro, dani])
-    await expect(p.page.locator('[data-card-id]')).toHaveCount(25);
-  return { code, ana, beto, caro, dani };
-}
 
 async function activeTeam(page: Page): Promise<Team> {
   const banner = (await page.getByTestId('turn-banner').textContent()) ?? '';

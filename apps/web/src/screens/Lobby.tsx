@@ -57,7 +57,7 @@ function TeamColumn({
   const agents = members.filter((p) => p.role === 'agent');
   const you = view.players.find((p) => p.id === view.youId);
   const name = t.lobby.teamLabel(team, view.settings.teamNames[team]);
-  const accent = team === 'red' ? 'bg-red pattern-red' : 'bg-blue pattern-blue';
+  const accent = team === 'red' ? 'bg-red-deep pattern-red' : 'bg-blue-deep pattern-blue';
 
   return (
     <section aria-label={name} data-team={team} className="flex flex-col rounded-lg bg-surface">

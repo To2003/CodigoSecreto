@@ -22,7 +22,7 @@ export function Landing() {
           </h1>
           <span
             aria-hidden="true"
-            className="absolute -right-6 -bottom-3 rotate-[-8deg] rounded border-[3px] border-double border-red px-2 font-stamp text-base tracking-widest text-red uppercase opacity-90 sm:-right-10"
+            className="absolute -right-6 -bottom-3 rotate-[-8deg] rounded border-[3px] border-double border-red-ink px-2 font-stamp text-base tracking-widest text-red-ink uppercase sm:-right-10"
           >
             {t.app.stamp}
           </span>

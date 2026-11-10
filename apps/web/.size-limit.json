@@ -1,0 +1,8 @@
+[
+  {
+    "name": "Initial JS + CSS (SPEC §10: < 250 KB gzip)",
+    "path": ["dist/assets/*.js", "dist/assets/*.css"],
+    "limit": "250 KB",
+    "gzip": true
+  }
+]

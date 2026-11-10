@@ -17,8 +17,8 @@ export function TurnStamp({
     phase.name === 'over'
       ? 'text-accent border-accent'
       : phase.team === 'red'
-        ? 'text-red border-red'
-        : 'text-blue border-blue';
+        ? 'text-red-ink border-red-ink'
+        : 'text-blue-ink border-blue-ink';
   const stamp =
     phase.name === 'over'
       ? t.game.stampOver

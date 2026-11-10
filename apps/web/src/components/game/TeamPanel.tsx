@@ -16,7 +16,7 @@ export function TeamPanel({
   className?: string;
 }) {
   const members = view.players.filter((p) => p.team === team);
-  const tab = team === 'red' ? 'bg-red pattern-red' : 'bg-blue pattern-blue';
+  const tab = team === 'red' ? 'bg-red-deep pattern-red' : 'bg-blue-deep pattern-blue';
   return (
     <aside
       aria-label={name}

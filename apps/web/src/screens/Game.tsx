@@ -62,9 +62,9 @@ function Counter({ view, team, name }: { view: RoomView; team: Team; name: strin
   return (
     <span
       data-testid={`remaining-${team}`}
-      aria-label={`${name}: ${t.game.remaining(left)}`}
-      className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 font-semibold text-paper ${team === 'red' ? 'bg-red pattern-red' : 'bg-blue pattern-blue'}`}
+      className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 font-semibold text-paper ${team === 'red' ? 'bg-red-deep pattern-red' : 'bg-blue-deep pattern-blue'}`}
     >
+      <span className="sr-only">{`${name}: ${t.game.remaining(left)}`}</span>
       {colorBlind && <span aria-hidden="true">{t.game.typeIcon[team]}</span>}
       <span aria-hidden="true" className="hidden sm:inline">
         {name}
@@ -80,18 +80,26 @@ function Counter({ view, team, name }: { view: RoomView; team: Team; name: strin
 function TeamsSheet({ view, teamName }: { view: RoomView; teamName: (team: Team) => string }) {
   const ref = useRef<HTMLDialogElement>(null);
   const [tab, setTab] = useState<Team>('red');
+  // Content only while open: a closed <dialog> would otherwise duplicate the teams in the DOM.
+  const [open, setOpen] = useState(false);
   return (
     <>
       <button
         type="button"
         className="rounded-md border border-line px-2.5 py-1 text-xs sm:text-sm lg:hidden"
-        onClick={() => ref.current?.showModal()}
+        onClick={() => {
+          setOpen(true);
+          ref.current?.showModal();
+        }}
       >
         {t.game.teamsAndHistory}
       </button>
       <dialog
         ref={ref}
         aria-label={t.game.teamsAndHistory}
+        onClose={() => {
+          setOpen(false);
+        }}
         className="mt-auto mb-0 max-h-[80dvh] w-full max-w-none rounded-t-xl bg-bg p-3 text-paper backdrop:bg-black/60"
       >
         <div role="tablist" className="mb-3 flex gap-2">
@@ -104,14 +112,14 @@ function TeamsSheet({ view, teamName }: { view: RoomView; teamName: (team: Team)
               onClick={() => {
                 setTab(team);
               }}
-              className={`flex-1 rounded-md px-3 py-1.5 font-semibold ${tab === team ? (team === 'red' ? 'bg-red' : 'bg-blue') : 'border border-line'}`}
+              className={`flex-1 rounded-md px-3 py-1.5 font-semibold ${tab === team ? (team === 'red' ? 'bg-red-deep' : 'bg-blue-deep') : 'border border-line'}`}
             >
               {teamName(team)}
             </button>
           ))}
         </div>
         <div role="tabpanel">
-          <TeamPanel view={view} team={tab} name={teamName(tab)} />
+          {open && <TeamPanel view={view} team={tab} name={teamName(tab)} />}
         </div>
         <form method="dialog" className="mt-3 text-right">
           <button type="submit" className="rounded-md bg-accent px-4 py-1.5 font-semibold text-ink">

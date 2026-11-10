@@ -12,6 +12,13 @@
   --red-soft: #f2b8b2;
   --blue: #2f6fb3;
   --blue-soft: #b5cde8;
+  /* AA variants (SPEC §5.2 asks for AA on all text): -ink for team-colored text on the dark
+     desk (≥ 4.5:1), -deep for team-colored backgrounds under paper text (≥ 4.5:1). The SPEC
+     tokens above stay for bands, art and borders. */
+  --red-ink: #ef6b62;
+  --red-deep: #b8372f;
+  --blue-ink: #6aa6e6;
+  --blue-deep: #2a62a0;
   --civil: #c9b994;
   --traitor: #111111;
   --accent: #e8c547;
@@ -33,6 +40,10 @@
   --red-soft: #f5c597;
   --blue: #0072b2;
   --blue-soft: #a9d3ef;
+  --red-ink: #f0a35e;
+  --red-deep: #a34a00;
+  --blue-ink: #56b4e9;
+  --blue-deep: #005d92;
 }
 
 :root[data-card-text='sm'] {
@@ -53,6 +64,10 @@
   --color-red-soft: var(--red-soft);
   --color-blue: var(--blue);
   --color-blue-soft: var(--blue-soft);
+  --color-red-ink: var(--red-ink);
+  --color-red-deep: var(--red-deep);
+  --color-blue-ink: var(--blue-ink);
+  --color-blue-deep: var(--blue-deep);
   --color-civil: var(--civil);
   --color-traitor: var(--traitor);
   --color-accent: var(--accent);
