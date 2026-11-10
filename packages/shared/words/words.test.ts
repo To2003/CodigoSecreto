@@ -35,3 +35,12 @@ describe('word decks', () => {
     }
   });
 });
+
+describe('DECK_INFO', () => {
+  it('matches the real decks (ids, names and sizes)', async () => {
+    const { DECK_INFO } = await import('./meta');
+    expect(DECK_INFO).toEqual(
+      DECKS.map((d) => ({ id: d.id, name: d.name, count: d.words.length })),
+    );
+  });
+});

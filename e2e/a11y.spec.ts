@@ -22,9 +22,29 @@ test('landing, lobby and game have no serious accessibility violations', async (
   await createRoom(lobbyHost);
   await expectAccessible(lobbyHost.page, 'lobby');
 
-  const { ana, caro } = await startGame(browser);
+  const { ana, beto, caro, dani } = await startGame(browser);
   await expectAccessible(ana.page, 'game (spymaster)');
   await expectAccessible(caro.page, 'game (agent)');
+
+  // Revealed cards (own agent, then a civilian) with their art and labels.
+  const banner = (await ana.page.getByTestId('turn-banner').textContent()) ?? '';
+  const [spymaster, agent, team] = banner.includes('Rojo')
+    ? [ana, caro, 'red']
+    : [beto, dani, 'blue'];
+  await spymaster.page.getByPlaceholder('Una sola palabra').fill('QXZ');
+  await spymaster.page.getByRole('button', { name: '∞', exact: true }).click();
+  await spymaster.page.getByRole('button', { name: 'Mandar pista' }).click();
+  for (const type of [team, 'civilian']) {
+    const word = await spymaster.page
+      .locator(`[data-revealed="false"][data-type="${type}"]`)
+      .first()
+      .getAttribute('data-word');
+    await agent.page.getByRole('button', { name: `Señalar ${word ?? ''}`, exact: true }).click();
+    await agent.page.getByRole('button', { name: `Dar vuelta ${word ?? ''}`, exact: true }).click();
+  }
+  await expect(agent.page.locator('[data-revealed="true"]')).toHaveCount(2);
+  await expectAccessible(agent.page, 'game with revealed cards (agent)');
+  await expectAccessible(spymaster.page, 'game with revealed cards (spymaster)');
 });
 
 test('color-blind mode stays accessible', async ({ browser }) => {

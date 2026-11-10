@@ -19,7 +19,10 @@ export function ConnectionIndicator({ compact = false }: { compact?: boolean }) 
       className="inline-flex items-center gap-2 text-sm text-paper"
     >
       <span aria-hidden="true" className={`size-2.5 rounded-full ${DOT[status]}`} />
-      <span className={compact ? 'sr-only sm:not-sr-only' : ''}>{t.connection[status]}</span>
+      {/* Compact hides only the reassuring "Conectado": problems always show in words (SPEC §5.6). */}
+      <span className={compact && status === 'connected' ? 'sr-only sm:not-sr-only' : ''}>
+        {t.connection[status]}
+      </span>
     </p>
   );
 }

@@ -1,5 +1,5 @@
-import { TEAMS, type RoomEvent, type RoomView, type Team } from '@clave/shared';
-import { useRef, useState } from 'react';
+import { TEAMS, type GameView, type RoomEvent, type RoomView, type Team } from '@clave/shared';
+import { useEffect, useRef, useState } from 'react';
 import { ConnectionIndicator } from '../components/ConnectionIndicator';
 import { ActionZone } from '../components/game/ActionZone';
 import { Board } from '../components/game/Board';
@@ -24,6 +24,14 @@ function lastNews(events: RoomEvent[], teamName: (team: Team) => string): string
     if (e.type === 'CLUE_GIVEN') return t.game.yourTurnAgents(t.game.clueLine(e.word, e.count));
   }
   return null;
+}
+
+/** Every reveal is announced, not only turn changes (SPEC §10 aria-live). */
+function revealNews(events: RoomEvent[], cards: GameView['cards']): string | null {
+  const reveal = [...events].reverse().find((e) => e.type === 'CARD_REVEALED');
+  if (reveal?.type !== 'CARD_REVEALED') return null;
+  const word = cards.find((c) => c.id === reveal.cardId)?.word ?? '';
+  return t.game.revealedNews(word, t.game.cardType[reveal.cardType]);
 }
 
 /** Host escape hatch (ADR-021): ends the game for everyone, with a confirm step. */
@@ -102,12 +110,25 @@ function TeamsSheet({ view, teamName }: { view: RoomView; teamName: (team: Team)
         }}
         className="mt-auto mb-0 max-h-[80dvh] w-full max-w-none rounded-t-xl bg-bg p-3 text-paper backdrop:bg-black/60"
       >
-        <div role="tablist" className="mb-3 flex gap-2">
+        <div
+          role="tablist"
+          className="mb-3 flex gap-2"
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+              const next: Team = tab === 'red' ? 'blue' : 'red';
+              setTab(next);
+              document.getElementById(`teams-tab-${next}`)?.focus();
+            }
+          }}
+        >
           {TEAMS.map((team) => (
             <button
               key={team}
               type="button"
               role="tab"
+              id={`teams-tab-${team}`}
+              aria-controls="teams-panel"
+              tabIndex={tab === team ? 0 : -1}
               aria-selected={tab === team}
               onClick={() => {
                 setTab(team);
@@ -118,7 +139,7 @@ function TeamsSheet({ view, teamName }: { view: RoomView; teamName: (team: Team)
             </button>
           ))}
         </div>
-        <div role="tabpanel">
+        <div role="tabpanel" id="teams-panel" aria-labelledby={`teams-tab-${tab}`}>
           {open && <TeamPanel view={view} team={tab} name={teamName(tab)} />}
         </div>
         <form method="dialog" className="mt-3 text-right">
@@ -135,14 +156,33 @@ export function Game({ view }: { view: RoomView }) {
   const game = view.game;
   const events = useRoom((s) => s.lastEvents);
   const [viewAsAgent, setViewAsAgent] = useState(false);
+  const sheetRef = useRef<HTMLElement>(null);
+  const [sheetHeight, setSheetHeight] = useState(0);
+  useEffect(() => {
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+    const observer = new ResizeObserver(() => {
+      setSheetHeight(sheet.getBoundingClientRect().height);
+    });
+    observer.observe(sheet);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
   if (!game) return null;
   const teamName = (team: Team) => t.lobby.teamLabel(team, view.settings.teamNames[team]);
   const me = view.players.find((p) => p.id === view.youId);
   const isSpymaster = me?.role === 'spymaster' && me.team !== 'spectator';
-  const news = lastNews(events, teamName);
+  const news = [revealNews(events, game.cards), lastNews(events, teamName)]
+    .filter(Boolean)
+    .join(' ');
+  const over = game.phase.name === 'over';
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-7xl flex-col gap-3 px-3 pt-3 pb-64 lg:gap-4 lg:px-5 lg:pb-6">
+    <main
+      className="mx-auto flex min-h-dvh max-w-7xl flex-col gap-3 px-3 pt-3 pb-(--sheet) lg:gap-4 lg:px-5 lg:pb-6"
+      style={{ '--sheet': `${Math.ceil(sheetHeight) + 16}px` } as React.CSSProperties}
+    >
       <header className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
         <Counter view={view} team="red" name={teamName('red')} />
         <TurnStamp game={game} teamName={teamName} />
@@ -171,13 +211,19 @@ export function Game({ view }: { view: RoomView }) {
       <div className="grid gap-4 lg:grid-cols-[15rem_1fr_15rem]">
         <TeamPanel view={view} team="red" name={teamName('red')} className="hidden lg:flex" />
         <div className="flex flex-col gap-4">
-          <Board view={view} showMap={game.seesMap && !viewAsAgent} />
+          {/* At game over the full map is public: "view as agent" no longer applies (SPEC §3.1). */}
+          <Board view={view} showMap={game.seesMap && (!viewAsAgent || over)} />
           {/* Action zone: a bottom sheet on phones, a panel under the board on desktop. */}
           <section
+            ref={sheetRef}
             aria-label={t.game.clueLabel}
             className="fixed inset-x-0 bottom-0 z-10 max-h-[45dvh] overflow-y-auto rounded-t-xl border-t border-line bg-surface p-4 shadow-[0_-8px_24px_rgb(0_0_0/0.4)] lg:static lg:max-h-none lg:rounded-xl lg:border lg:shadow-none"
           >
-            <p className="mb-2 min-h-5 text-sm text-accent" aria-live="polite" data-testid="news">
+            <p
+              className={`text-sm text-accent ${news ? 'mb-2' : 'sr-only lg:not-sr-only lg:mb-2 lg:min-h-5'}`}
+              aria-live="polite"
+              data-testid="news"
+            >
               {news}
             </p>
             <ActionZone view={view} teamName={teamName} />

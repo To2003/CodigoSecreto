@@ -60,14 +60,14 @@ function ClueInput({ view }: { view: RoomView }) {
           setWord(e.target.value);
           setServerError(null);
         }}
-        className={`rounded-md border-2 bg-bg px-3 py-2 text-lg text-paper uppercase ${showError ? 'border-red' : 'border-paper/30'}`}
+        className={`rounded-md border-2 bg-bg px-3 py-2 text-lg text-paper uppercase ${showError ? 'border-red' : 'border-paper/45'}`}
       />
       <p id={`${id}-error`} className="min-h-5 text-sm text-red-soft" aria-live="polite">
         {clueError ?? serverError}
       </p>
       <fieldset>
         <legend className="mb-1 text-sm">{t.game.countLabel}</legend>
-        <div className="flex flex-wrap gap-1">
+        <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
           {COUNTS.map((c) => (
             <button
               key={String(c)}
@@ -76,7 +76,7 @@ function ClueInput({ view }: { view: RoomView }) {
               onClick={() => {
                 setCount(c);
               }}
-              className={`size-9 rounded-md border font-bold ${count === c ? 'border-accent bg-accent text-ink' : 'border-paper/30'}`}
+              className={`size-9 shrink-0 rounded-md border font-bold ${count === c ? 'border-accent bg-accent text-ink' : 'border-paper/45'}`}
             >
               {t.game.count(c)}
             </button>
@@ -107,6 +107,7 @@ export function ActionZone({
   if (!game || game.phase.name === 'over' || game.phase.name === 'objection') return null;
   const phase = game.phase;
   const onActiveTeam = me?.team === phase.team;
+  const coarse = window.matchMedia('(pointer: coarse)').matches;
   const spymaster = view.players.find((p) => p.team === phase.team && p.role === 'spymaster');
 
   if (phase.name === 'clue') {
@@ -131,8 +132,12 @@ export function ActionZone({
           {clueText}
         </p>
         <p className="text-sm text-paper/80">{t.game.guessesLeft(phase.guessesLeft)}</p>
-        <p className="hidden text-sm text-paper/70 sm:block">
-          {view.settings.revealMode === 'majority' ? t.game.majorityHint : t.game.pointHint}
+        <p className="text-sm text-paper/70">
+          {view.settings.revealMode === 'majority'
+            ? t.game.majorityHint
+            : coarse
+              ? t.game.pointHintTouch
+              : t.game.pointHint}
         </p>
         <div className="flex items-center gap-3">
           <button

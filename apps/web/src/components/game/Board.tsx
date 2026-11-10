@@ -1,8 +1,8 @@
 import type { CardType, PublicCard, RoomView } from '@clave/shared';
+import { useEffect, useState } from 'react';
 import { CardArt } from '../../art/CardArt';
 import { t } from '../../i18n/es-AR';
 import { pointCard, revealCard } from '../../net/client';
-import { usePrefs } from '../../store/prefs';
 import { Avatar } from '../Avatar';
 import { FitText } from './FitText';
 
@@ -23,8 +23,11 @@ const KEY_TINT: Record<CardType, string> = {
   red: 'bg-red/25',
   blue: 'bg-blue/25',
   civilian: 'bg-transparent',
-  traitor: 'bg-ink/55',
+  traitor: 'bg-ink/85',
 };
+
+/** How long a first tap keeps a card "armed" for the revealing second tap (SPEC §3.3). */
+const ARM_MS = 3000;
 
 const coarsePointer = () => window.matchMedia('(pointer: coarse)').matches;
 
@@ -36,8 +39,19 @@ function TypeIcon({ type, className = '' }: { type: CardType; className?: string
   );
 }
 
-function Card({ card, view, showMap }: { card: PublicCard; view: RoomView; showMap: boolean }) {
-  const colorBlind = usePrefs((p) => p.colorBlind);
+function Card({
+  card,
+  view,
+  showMap,
+  armed,
+  arm,
+}: {
+  card: PublicCard;
+  view: RoomView;
+  showMap: boolean;
+  armed: boolean;
+  arm: (cardId: string | null) => void;
+}) {
   const game = view.game;
   if (!game) return null;
   const me = view.players.find((p) => p.id === view.youId);
@@ -50,14 +64,36 @@ function Card({ card, view, showMap }: { card: PublicCard; view: RoomView; showM
     me?.team === phase.team &&
     me.role === 'agent';
   const iPoint = game.points[view.youId] === card.id;
-  const canReveal = iPoint && view.settings.revealMode === 'any';
+  const revealable = canPoint && view.settings.revealMode === 'any';
+  const touchArmed = revealable && armed;
   const pointers = view.players.filter((p) => game.points[p.id] === card.id);
+  const describedBy = pointers.length > 0 ? `pointed-${card.id}` : undefined;
 
   const onClick = () => {
-    // Mobile (SPEC §3.3): the first tap points, a second tap on the same card reveals it.
-    if (canReveal && coarsePointer()) void revealCard(card.id);
-    else void pointCard(iPoint ? null : card.id);
+    if (!coarsePointer() || !revealable) {
+      void pointCard(iPoint ? null : card.id);
+      return;
+    }
+    // Touch (SPEC §3.3): first tap points and arms; a second tap within ARM_MS reveals.
+    // Armed state is local, so the second tap doesn't wait for the server's confirmation.
+    if (touchArmed) {
+      arm(null);
+      void revealCard(card.id);
+    } else if (iPoint) {
+      void pointCard(null);
+    } else {
+      arm(card.id);
+      void pointCard(card.id);
+    }
   };
+
+  const label = touchArmed
+    ? t.game.reveal(card.word)
+    : canPoint
+      ? iPoint
+        ? t.game.unpoint(card.word)
+        : t.game.point(card.word)
+      : t.game.cardLabel(card.word, type ? t.game.cardType[type] : null, card.revealed);
 
   return (
     <div
@@ -70,27 +106,19 @@ function Card({ card, view, showMap }: { card: PublicCard; view: RoomView; showM
       <button
         type="button"
         disabled={!canPoint}
-        aria-pressed={canPoint ? iPoint : undefined}
-        aria-label={
-          canPoint
-            ? iPoint
-              ? t.game.unpoint(card.word)
-              : t.game.point(card.word)
-            : t.game.cardLabel(card.word, type ? t.game.cardType[type] : null, card.revealed)
-        }
+        aria-pressed={canPoint && !touchArmed ? iPoint : undefined}
+        aria-label={label}
+        aria-describedby={describedBy}
         onClick={onClick}
-        className={`relative block aspect-[3/2] w-full overflow-hidden rounded-[10px] text-left shadow-[0_2px_0_rgb(0_0_0/0.35)] transition-transform enabled:cursor-pointer enabled:hover:-translate-y-0.5 ${iPoint ? 'ring-4 ring-accent' : ''}`}
+        className={`relative block aspect-[3/2] w-full overflow-hidden rounded-[10px] text-left shadow-[0_2px_0_rgb(0_0_0/0.35)] transition-transform enabled:cursor-pointer enabled:hover:-translate-y-0.5 ${iPoint || touchArmed ? 'ring-4 ring-accent' : ''}`}
       >
         {card.revealed && type ? (
           <span className={`absolute inset-0 ${REVEALED_BG[type]}`}>
             <span className="absolute inset-0 opacity-90">
               <CardArt type={type} id={card.id} />
             </span>
-            <span className="absolute inset-x-1 bottom-0.5 rounded-sm bg-black/35 px-1 text-center text-paper">
-              <FitText
-                text={card.word}
-                className="font-card text-[0.55rem] font-medium tracking-wide uppercase sm:text-xs"
-              />
+            <span className="revealed-label absolute inset-x-0.5 bottom-0.5 rounded-sm bg-black/60 px-0.5 text-center text-paper">
+              <FitText text={card.word} className="font-card font-medium uppercase" />
             </span>
           </span>
         ) : (
@@ -113,32 +141,41 @@ function Card({ card, view, showMap }: { card: PublicCard; view: RoomView; showM
         // Mirrored word, as on a physical card read from across the table (SPEC §5.4).
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-2 top-1 hidden rotate-180 text-center font-card text-[0.6rem] tracking-wide text-ink/35 uppercase sm:block"
+          className={`pointer-events-none absolute inset-x-2 top-1 hidden rotate-180 text-center font-card text-[0.6rem] tracking-wide uppercase sm:block ${type === 'traitor' ? 'text-paper/50' : 'text-ink/35'}`}
         >
           {card.word}
         </span>
       )}
-      {!card.revealed && type && colorBlind && (
+      {/* The type icon is always on the spymaster's map, not only in color-blind mode (SPEC §3.2). */}
+      {!card.revealed && type && (
         <TypeIcon
           type={type}
-          className="pointer-events-none absolute top-1 right-1.5 text-[0.65rem] text-ink sm:text-sm"
+          className={`pointer-events-none absolute top-1 right-1.5 text-[0.65rem] sm:text-sm ${type === 'traitor' ? 'text-accent' : 'text-ink'}`}
         />
       )}
+      {touchArmed && (
+        <span className="pointer-events-none absolute inset-x-0 -bottom-5 z-10 text-center text-[0.65rem] font-semibold text-accent">
+          {t.game.tapAgain}
+        </span>
+      )}
       {pointers.length > 0 && (
-        <div
-          className="pointer-events-none absolute -top-2 left-1 flex -space-x-2"
-          aria-label={t.game.pointedBy(pointers.map((p) => p.nickname))}
-        >
+        <div className="pointer-events-none absolute -top-2 left-1 flex -space-x-2">
+          <span id={describedBy} className="sr-only">
+            {t.game.pointedBy(pointers.map((p) => p.nickname))}
+          </span>
           {pointers.map((p) => (
             <Avatar key={p.id} avatar={p.avatar} color={p.color} size={22} />
           ))}
         </div>
       )}
-      {canReveal && (
+      {revealable && iPoint && (
         <button
           type="button"
           aria-label={t.game.reveal(card.word)}
-          onClick={() => void revealCard(card.id)}
+          onClick={() => {
+            arm(null);
+            void revealCard(card.id);
+          }}
           className="absolute -top-2.5 -right-2 flex size-8 items-center justify-center rounded-full bg-accent font-bold text-ink shadow active:scale-97"
         >
           {t.game.revealIcon}
@@ -150,10 +187,34 @@ function Card({ card, view, showMap }: { card: PublicCard; view: RoomView; showM
 
 export function Board({ view, showMap }: { view: RoomView; showMap: boolean }) {
   const cards = view.game?.cards ?? [];
+  const [armed, setArmed] = useState<string | null>(null);
+
+  // An armed card disarms after ARM_MS; the next tap then just un-points it.
+  useEffect(() => {
+    if (!armed) return;
+    const timer = setTimeout(() => {
+      setArmed(null);
+    }, ARM_MS);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [armed]);
+
   return (
-    <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5" role="group" aria-label={t.game.board}>
+    <div
+      className="grid touch-manipulation grid-cols-5 gap-x-1.5 gap-y-2.5 sm:gap-2.5"
+      role="group"
+      aria-label={t.game.board}
+    >
       {cards.map((card) => (
-        <Card key={card.id} card={card} view={view} showMap={showMap} />
+        <Card
+          key={card.id}
+          card={card}
+          view={view}
+          showMap={showMap}
+          armed={armed === card.id}
+          arm={setArmed}
+        />
       ))}
     </div>
   );

@@ -29,7 +29,7 @@ export function TeamPanel({
           {members.map((p) => (
             <li key={p.id} className="flex items-center gap-2" data-player={p.nickname}>
               <Avatar avatar={p.avatar} color={p.color} size={28} dimmed={!p.connected} />
-              <span className={p.connected ? '' : 'text-paper/50'}>{p.nickname}</span>
+              <span className={p.connected ? '' : 'text-paper/60'}>{p.nickname}</span>
               <span className="text-xs text-paper/60">
                 {[
                   p.role === 'spymaster' && t.lobby.spymaster,

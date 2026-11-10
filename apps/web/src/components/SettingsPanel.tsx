@@ -1,6 +1,6 @@
 import {
   CLUE_TIMER_OPTIONS,
-  DECKS,
+  DECK_INFO,
   GUESS_TIMER_OPTIONS,
   MAX_TEAM_NAME_LENGTH,
   parseCustomWords,
@@ -12,7 +12,7 @@ import { useId, useState } from 'react';
 import { t } from '../i18n/es-AR';
 import { updateSettings } from '../net/client';
 
-const fieldClass = 'rounded-md border border-paper/30 bg-bg px-2 py-1 text-paper';
+const fieldClass = 'rounded-md border border-paper/45 bg-bg px-2 py-1 text-paper';
 
 function Toggle({
   label,
@@ -63,9 +63,7 @@ export function SettingsPanel({
   return (
     // Collapsible: open for the host who edits it, folded for everyone else (long on phones).
     <details open={editable} className="group rounded-lg bg-surface p-4">
-      <summary className="cursor-pointer text-lg font-semibold">
-        <h2 className="inline">{t.settings.title}</h2>
-      </summary>
+      <summary className="cursor-pointer text-lg font-semibold">{t.settings.title}</summary>
       {!editable && <p className="mb-3 text-sm text-paper/70">{t.settings.readOnly}</p>}
       <fieldset
         disabled={!editable}
@@ -87,10 +85,10 @@ export function SettingsPanel({
 
         <fieldset className="flex flex-col gap-1">
           <legend className="mb-1">{t.settings.decks}</legend>
-          {DECKS.map((deck) => (
+          {DECK_INFO.map((deck) => (
             <Toggle
               key={deck.id}
-              label={`${deck.name} (${deck.words.length})`}
+              label={`${deck.name} (${deck.count})`}
               checked={s.deckIds.includes(deck.id)}
               onChange={(on) => {
                 patch({

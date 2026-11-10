@@ -91,7 +91,11 @@ body {
 
 /* Card word size: fluid with the viewport, scaled by the setting; FitText shrinks long words. */
 [data-fit].font-card {
-  font-size: calc(clamp(0.72rem, 2.7vw, 1.4rem) * var(--card-text-scale));
+  font-size: calc(var(--fit-base, clamp(0.72rem, 2.7vw, 1.4rem)) * var(--card-text-scale));
+}
+/* Revealed cards show the word small, on a label under the art. */
+.revealed-label {
+  --fit-base: clamp(0.5rem, 1.7vw, 0.8rem);
 }
 
 /* Team patterns for color-blind mode: stripes for red, dots for blue (SPEC §5.6). */

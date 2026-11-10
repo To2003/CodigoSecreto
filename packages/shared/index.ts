@@ -21,6 +21,7 @@ export {
   type Settings,
 } from './schemas/settings';
 export { DECKS, getDeck, type Deck } from './words';
+export { DECK_INFO, type DeckInfo } from './words/meta';
 export {
   AVATAR_COLORS,
   AVATAR_COUNT,

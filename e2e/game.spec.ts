@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { devices, expect, test, type Page } from '@playwright/test';
 import { startGame, type Player } from './helpers';
 
 type Team = 'red' | 'blue';
@@ -117,4 +117,38 @@ test('the active spymaster reloads (F5) and drops: the game pauses and resumes',
   await expect(other.page.getByText(`Esperando a ${spymaster.name}…`)).toBeHidden();
   await giveClue(back, '1');
   await expect(other.page.getByText('QXZ · 1').first()).toBeVisible();
+});
+
+test('on a phone, tap to point and tap again to reveal; a late tap only un-points', async ({
+  browser,
+}) => {
+  const { ana, beto, caro, dani } = await startGame(browser, { context: devices['iPhone SE'] });
+  const active = await activeTeam(ana.page);
+  const [spymaster, agent] = active === 'red' ? [ana, caro] : [beto, dani];
+  await giveClue(spymaster.page);
+  const [first, second] = await hiddenWords(spymaster.page, active);
+
+  await agent.page.getByRole('button', { name: `Señalar ${first}`, exact: true }).tap();
+  // Armed: the same card now announces what the next tap does, and says it on screen.
+  await expect(
+    agent.page.getByRole('button', { name: `Dar vuelta ${first}`, exact: true }).first(),
+  ).toBeVisible();
+  await expect(agent.page.getByText('Tocá de nuevo')).toBeVisible();
+  await agent.page.locator(`[data-word="${first}"] > button`).first().tap();
+  await expect(agent.page.locator(`[data-word="${first}"]`)).toHaveAttribute(
+    'data-revealed',
+    'true',
+  );
+
+  // After the arming window, a second tap takes the point back instead of revealing.
+  await agent.page.getByRole('button', { name: `Señalar ${second}`, exact: true }).tap();
+  await expect(agent.page.getByText('Tocá de nuevo')).toBeHidden({ timeout: 5000 });
+  await agent.page.locator(`[data-word="${second}"] > button`).first().tap();
+  await expect(
+    agent.page.getByRole('button', { name: `Señalar ${second}`, exact: true }),
+  ).toBeVisible();
+  await expect(agent.page.locator(`[data-word="${second}"]`)).toHaveAttribute(
+    'data-revealed',
+    'false',
+  );
 });

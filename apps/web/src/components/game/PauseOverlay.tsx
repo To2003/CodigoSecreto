@@ -1,5 +1,5 @@
 import type { RoomView, Team } from '@clave/shared';
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { t } from '../../i18n/es-AR';
 import { backToLobby, reassignSpymaster } from '../../net/client';
 
@@ -16,6 +16,12 @@ export function PauseOverlay({
 }) {
   const paused = view.game?.paused;
   const id = useId();
+  const ref = useRef<HTMLDialogElement>(null);
+  // A native modal dialog: focus moves in and the board behind becomes inert (no tabbing to it).
+  useEffect(() => {
+    const dialog = ref.current;
+    if (paused && dialog && !dialog.open) dialog.showModal();
+  }, [paused]);
   const [choice, setChoice] = useState('');
   const [error, setError] = useState<string | null>(null);
   if (!paused) return null;
@@ -34,10 +40,15 @@ export function PauseOverlay({
       : t.game.pausedNoAgents(teamName(paused.team));
 
   return (
-    <div
-      className="fixed inset-0 z-20 flex items-center justify-center bg-bg/85 px-4"
+    <dialog
+      ref={ref}
       role="alertdialog"
       aria-labelledby={`${id}-title`}
+      // The pause isn't the viewer's to dismiss: Esc does nothing.
+      onCancel={(e) => {
+        e.preventDefault();
+      }}
+      className="m-auto bg-transparent px-4 text-paper backdrop:bg-bg/85"
     >
       <div className="flex max-w-sm flex-col gap-3 rounded-xl border border-paper/30 bg-bg p-5 text-center">
         <p id={`${id}-title`} className="text-xl font-bold">
@@ -96,6 +107,6 @@ export function PauseOverlay({
           </button>
         )}
       </div>
-    </div>
+    </dialog>
   );
 }

@@ -1,4 +1,10 @@
-import { expect, type Browser, type Locator, type Page } from '@playwright/test';
+import {
+  expect,
+  type Browser,
+  type BrowserContextOptions,
+  type Locator,
+  type Page,
+} from '@playwright/test';
 
 export interface Player {
   page: Page;
@@ -9,9 +15,9 @@ export interface Player {
 export async function newPlayer(
   browser: Browser,
   name: string,
-  viewport?: { width: number; height: number },
+  options: BrowserContextOptions = {},
 ): Promise<Player> {
-  const context = await browser.newContext(viewport ? { viewport } : {});
+  const context = await browser.newContext(options);
   const page = await context.newPage();
   return { page, name };
 }
@@ -46,10 +52,10 @@ export const row = (scope: Page | Locator, nickname: string) =>
 /** Ana (host) and Caro red, Beto and Dani blue (lobby auto-balance); Ana and Beto spymasters. */
 export async function startGame(
   browser: Browser,
-  options: { viewport?: { width: number; height: number }; customWords?: string[] } = {},
+  options: { context?: BrowserContextOptions; customWords?: string[] } = {},
 ) {
   const [ana, beto, caro, dani] = await Promise.all(
-    ['Ana', 'Beto', 'Caro', 'Dani'].map((name) => newPlayer(browser, name, options.viewport)),
+    ['Ana', 'Beto', 'Caro', 'Dani'].map((name) => newPlayer(browser, name, options.context)),
   );
   if (!ana || !beto || !caro || !dani) throw new Error('setup');
   const code = await createRoom(ana);

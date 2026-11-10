@@ -80,7 +80,7 @@ export function Landing() {
             onChange={(e) => {
               setCode(e.target.value.toUpperCase());
             }}
-            className="w-28 rounded-md border border-paper/30 bg-bg px-3 py-2 text-center font-mono text-lg tracking-widest text-paper uppercase"
+            className="w-28 rounded-md border border-paper/45 bg-bg px-3 py-2 text-center font-mono text-lg tracking-widest text-paper uppercase"
           />
           <button
             type="submit"

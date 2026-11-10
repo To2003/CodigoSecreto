@@ -27,7 +27,7 @@ function PlayerRow({ player, view }: { player: PublicPlayer; view: RoomView }) {
   return (
     <li className="flex items-center gap-2 py-1" data-player={player.nickname}>
       <Avatar avatar={player.avatar} color={player.color} size={28} dimmed={!player.connected} />
-      <span className={player.connected ? '' : 'text-paper/50'}>{player.nickname}</span>
+      <span className={player.connected ? '' : 'text-paper/60'}>{player.nickname}</span>
       {tags.length > 0 && <span className="text-xs text-paper/60">({tags.join(', ')})</span>}
       {youAreHost && !isYou && (
         <button

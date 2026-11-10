@@ -61,7 +61,7 @@ export function ProfileForm({
             setMissing(false);
             setProfile({ ...profile, nickname: e.target.value });
           }}
-          className="rounded-md border border-line bg-bg px-3 py-2 text-base text-paper"
+          className="rounded-md border border-paper/45 bg-bg px-3 py-2 text-base text-paper"
         />
         {missing && <span className="text-red-soft">{t.profile.nicknameMissing}</span>}
       </label>
@@ -103,7 +103,7 @@ export function ProfileForm({
                   setProfile({ ...profile, color });
                 }}
               />
-              <span className="flex items-center gap-1 rounded-full border border-paper/30 px-2 py-1 text-sm peer-checked:border-accent peer-focus-visible:outline-2">
+              <span className="flex items-center gap-1 rounded-full border border-paper/45 px-2 py-1 text-sm peer-checked:border-accent peer-focus-visible:outline-2">
                 <span
                   aria-hidden="true"
                   className="size-3 rounded-full"
