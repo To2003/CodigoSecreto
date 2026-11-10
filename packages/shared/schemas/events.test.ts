@@ -76,3 +76,19 @@ describe('clientEvents', () => {
     expect(clientEvents['lobby:kick'].safeParse({ playerId: 'x'.repeat(65) }).success).toBe(false);
   });
 });
+
+describe('game events', () => {
+  it('game:clue takes a word and a count of 0–9 or "inf"', () => {
+    expect(clientEvents['game:clue'].safeParse({ word: 'PLAYA', count: 2 }).success).toBe(true);
+    expect(clientEvents['game:clue'].safeParse({ word: 'PLAYA', count: 'inf' }).success).toBe(true);
+    expect(clientEvents['game:clue'].safeParse({ word: 'PLAYA', count: 10 }).success).toBe(false);
+    expect(clientEvents['game:clue'].safeParse({ word: 'x'.repeat(61), count: 1 }).success).toBe(
+      false,
+    );
+  });
+
+  it('game:point accepts null to clear; game:rematch defaults keepSpymasters', () => {
+    expect(clientEvents['game:point'].parse({ cardId: null })).toEqual({ cardId: null });
+    expect(clientEvents['game:rematch'].parse({})).toEqual({ keepSpymasters: false });
+  });
+});

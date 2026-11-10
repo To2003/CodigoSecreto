@@ -6,6 +6,7 @@ import {
   type ClientEventName,
   type ClientToServerEvents,
   type ErrorCode,
+  type ErrorPayload,
   type RoomEvent,
   type ServerToClientEvents,
 } from '@clave/shared';
@@ -13,8 +14,9 @@ import type { Server, Socket } from 'socket.io';
 import type { z } from 'zod';
 import type { Logger } from '../log';
 import { ERROR_MESSAGES } from '../messages';
-import { RoomError, type Room } from '../rooms/room';
+import { RoomError, type PlayerAction, type Room } from '../rooms/room';
 import type { RoomStore } from '../rooms/store';
+import { eventsFor } from '../views/gameView';
 import { TokenBucket } from './rateLimit';
 
 interface SocketData {
@@ -32,9 +34,9 @@ export interface LobbyContext {
 }
 
 const channel = (code: string, playerId: string) => `player:${code}:${playerId}`;
-const errorAck = (code: ErrorCode): Ack => ({
+const errorAck = (code: ErrorCode, clue?: ErrorPayload['clue']): Ack => ({
   ok: false,
-  error: { code, message: ERROR_MESSAGES[code] },
+  error: { code, message: ERROR_MESSAGES[code], ...(clue ? { clue } : {}) },
 });
 
 /** Sends every player in the room their own filtered view with the next seq (SPEC §2.2). */
@@ -44,7 +46,7 @@ export function broadcast(io: IoServer, room: Room, events: RoomEvent[]) {
     io.to(channel(room.code, p.id)).emit('room:patch', {
       seq: room.seq,
       view: room.view(p.id),
-      events,
+      events: eventsFor(events, room.game, p.id),
     });
   }
 }
@@ -80,7 +82,7 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
           reply({ ok: true, ...handler(parsed.data as z.output<(typeof clientEvents)[E]>) });
         } catch (err) {
           if (err instanceof RoomError) {
-            reply(errorAck(err.code));
+            reply(errorAck(err.code, err.clue));
             return;
           }
           log.error('handler failed', { event, err });
@@ -182,7 +184,7 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
 
   on('lobby:randomize', () => {
     const { room, playerId } = current();
-    broadcast(io, room, room.randomize(playerId, mulberry32(randomInt(2 ** 31))));
+    broadcast(io, room, room.randomize(playerId, seed()));
     return undefined;
   });
 
@@ -200,6 +202,49 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
     io.in(key).socketsLeave(key);
     openSockets.delete(key);
     broadcast(io, room, events);
+    return undefined;
+  });
+
+  const seed = () => mulberry32(randomInt(2 ** 31));
+  const game = (build: (playerId: string) => PlayerAction) => {
+    const { room, playerId } = current();
+    broadcast(io, room, room.act(playerId, build(playerId)));
+  };
+
+  on('game:start', () => {
+    const { room, playerId } = current();
+    broadcast(io, room, room.start(playerId, seed()));
+    return undefined;
+  });
+  on('game:clue', ({ word, count }) => {
+    game((playerId) => ({ type: 'GIVE_CLUE', playerId, word, count }));
+    return undefined;
+  });
+  on('game:point', ({ cardId }) => {
+    game((playerId) => ({ type: 'POINT_CARD', playerId, cardId }));
+    return undefined;
+  });
+  on('game:reveal', ({ cardId }) => {
+    game((playerId) => ({ type: 'REVEAL_CARD', playerId, cardId }));
+    return undefined;
+  });
+  on('game:endGuessing', () => {
+    game((playerId) => ({ type: 'END_GUESSING', playerId }));
+    return undefined;
+  });
+  on('game:setSpymaster', ({ playerId: target }) => {
+    const { room, playerId } = current();
+    broadcast(io, room, room.setSpymaster(playerId, target));
+    return undefined;
+  });
+  on('game:rematch', ({ keepSpymasters }) => {
+    const { room, playerId } = current();
+    broadcast(io, room, room.rematch(playerId, keepSpymasters));
+    return undefined;
+  });
+  on('game:backToLobby', () => {
+    const { room, playerId } = current();
+    broadcast(io, room, room.backToLobby(playerId));
     return undefined;
   });
 

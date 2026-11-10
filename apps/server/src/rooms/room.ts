@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import {
+  applyAction,
   chooseWords,
   MAX_PLAYERS,
   mulberry32,
@@ -8,7 +9,11 @@ import {
   shuffle,
   TEAMS,
   DEFAULT_SETTINGS,
+  type Action,
   type ErrorCode,
+  type ErrorPayload,
+  type GameState,
+  type GameView,
   type PlayerTeam,
   type Profile,
   type PublicPlayer,
@@ -22,15 +27,33 @@ import {
   type StartBlocker,
   type Team,
 } from '@clave/shared';
+import { toPublicView } from '../views/gameView';
 
 /** Grace period a disconnected player keeps their place (SPEC §2.4). */
 export const RECONNECT_GRACE_MS = 60_000;
 
 export class RoomError extends Error {
-  constructor(readonly code: ErrorCode) {
+  constructor(
+    readonly code: ErrorCode,
+    readonly clue?: ErrorPayload['clue'],
+  ) {
     super(code);
   }
 }
+
+/** Game actions players can send. START_GAME, REMATCH and system actions go through Room methods. */
+export type PlayerAction = Extract<
+  Action,
+  {
+    type:
+      | 'GIVE_CLUE'
+      | 'POINT_CARD'
+      | 'REVEAL_CARD'
+      | 'END_GUESSING'
+      | 'OBJECT_CLUE'
+      | 'VOTE_OBJECTION';
+  }
+>;
 
 export interface RoomPlayer extends PublicPlayer {
   /** Secret that lets this player reclaim their seat. Never serialized into a view. */
@@ -53,6 +76,11 @@ export class Room {
   scoreboard: Record<Team, number> = { red: 0, blue: 0 };
   /** Incremented on every broadcast so clients can detect a missed patch (SPEC §2.2). */
   seq = 0;
+  /** Full game state, types included. Leaves the server only through toPublicView. */
+  game: GameState | null = null;
+  private rng: Rng | null = null;
+  /** Words of the last game, avoided by the next one (SPEC §7). */
+  private previousWords: string[] = [];
   /** When the last connected player left; a new room counts as empty from its creation. */
   emptySince: number | null;
 
@@ -121,7 +149,15 @@ export class Room {
     p.connected = connected;
     p.disconnectedAt = connected ? null : (p.disconnectedAt ?? now);
     this.updateEmptySince(now);
+    this.syncPresence(playerId, connected);
     return changed ? [{ type: 'PLAYER_CONNECTION', playerId, connected }] : [];
+  }
+
+  /** Presence feeds the engine (majority reveal, objection voters). Unknown ids are fine. */
+  private syncPresence(playerId: string, connected: boolean) {
+    if (!this.game || !this.rng || !this.game.players.some((p) => p.id === playerId)) return;
+    const res = applyAction(this.game, { type: 'SET_CONNECTED', playerId, connected }, this.rng);
+    if (res.ok) this.game = res.state;
   }
 
   private remove(playerId: string, event: RoomEvent): RoomEvent[] {
@@ -137,6 +173,7 @@ export class Room {
 
   leave(playerId: string, now: number): RoomEvent[] {
     this.player(playerId);
+    this.syncPresence(playerId, false);
     const events = this.remove(playerId, { type: 'PLAYER_LEFT', playerId });
     this.updateEmptySince(now);
     return events;
@@ -149,13 +186,22 @@ export class Room {
     return this.remove(target, { type: 'PLAYER_KICKED', playerId: target });
   }
 
-  /** In the lobby, a seat is released 60 s after the drop. During a game it is kept (M3). */
+  /**
+   * In the lobby, a seat is released 60 s after the drop. During a game seats are kept, but a host
+   * gone for 60 s hands the role to the oldest connected player, so someone can still reassign a
+   * missing spymaster (SPEC §2.4) instead of the game staying paused forever.
+   */
   expireDisconnected(now: number): RoomEvent[] {
-    if (this.status !== 'lobby') return [];
-    const expired = this.players.filter(
-      (p) =>
-        !p.connected && p.disconnectedAt !== null && now - p.disconnectedAt >= RECONNECT_GRACE_MS,
-    );
+    const gone = (p: RoomPlayer) =>
+      !p.connected && p.disconnectedAt !== null && now - p.disconnectedAt >= RECONNECT_GRACE_MS;
+    if (this.status !== 'lobby') {
+      const host = this.players.find((p) => p.id === this.hostId);
+      const next = this.players.find((p) => p.connected);
+      if (!host || !gone(host) || !next) return [];
+      this.hostId = next.id;
+      return [{ type: 'HOST_CHANGED', playerId: next.id }];
+    }
+    const expired = this.players.filter(gone);
     return expired.flatMap((p) => this.remove(p.id, { type: 'PLAYER_LEFT', playerId: p.id }));
   }
 
@@ -219,6 +265,95 @@ export class Room {
     return blockers;
   }
 
+  // ── game ────────────────────────────────────────────────────────────────
+
+  private requireGame(): { game: GameState; rng: Rng } {
+    if (!this.game || !this.rng || this.status === 'lobby') throw new RoomError('NOT_PLAYING');
+    return { game: this.game, rng: this.rng };
+  }
+
+  /** Runs an engine action; engine errors become RoomErrors (with the clue detail). */
+  private apply(action: Action, rng: Rng): RoomEvent[] {
+    const res = applyAction(this.game, action, rng);
+    if (!res.ok) throw new RoomError(res.error.code, res.error.clue);
+    this.game = res.state;
+    this.rng = rng;
+    // Roles can change in the engine (rematch rotation, reassigned spymaster): mirror them.
+    for (const p of this.players) {
+      const inGame = res.state.players.find((g) => g.id === p.id);
+      if (inGame) p.role = inGame.role;
+    }
+    for (const e of res.events) {
+      if (e.type === 'GAME_STARTED') this.status = 'playing';
+      if (e.type === 'GAME_OVER') {
+        this.status = 'over';
+        this.scoreboard[e.winner] += 1;
+      }
+    }
+    return res.events;
+  }
+
+  start(by: string, rng: Rng): RoomEvent[] {
+    this.requireHost(by);
+    this.requireLobby();
+    if (this.startBlockers().length > 0) throw new RoomError('CANNOT_START');
+    const players = this.players.map(({ id, team, role, connected }) => ({
+      id,
+      team,
+      role,
+      connected,
+    }));
+    this.game = null;
+    return this.apply(
+      { type: 'START_GAME', players, settings: this.settings, excludeWords: this.previousWords },
+      rng,
+    );
+  }
+
+  /** SPEC §2.4: the game pauses while the active team's spymaster is disconnected. */
+  paused(): GameView['paused'] {
+    const game = this.game;
+    if (!game || game.phase.name === 'over') return null;
+    const team = game.phase.team;
+    const spymaster = game.players.find((p) => p.team === team && p.role === 'spymaster');
+    if (!spymaster) return null;
+    const present = this.players.some((p) => p.id === spymaster.id && p.connected);
+    return present ? null : { team, spymasterId: spymaster.id };
+  }
+
+  act(playerId: string, action: PlayerAction): RoomEvent[] {
+    const { rng } = this.requireGame();
+    if (this.paused()) throw new RoomError('GAME_PAUSED');
+    if (action.playerId !== playerId) throw new RoomError('BAD_REQUEST');
+    return this.apply(action, rng);
+  }
+
+  /** Host picks a connected teammate as the new spymaster of that player's team. */
+  setSpymaster(by: string, playerId: string): RoomEvent[] {
+    this.requireHost(by);
+    const { game, rng } = this.requireGame();
+    const target = this.player(playerId);
+    const team = game.players.find((p) => p.id === playerId)?.team;
+    if (!target.connected || !team || team === 'spectator') throw new RoomError('WRONG_TEAM');
+    return this.apply({ type: 'SET_SPYMASTER', team, playerId }, rng);
+  }
+
+  rematch(by: string, keepSpymasters: boolean): RoomEvent[] {
+    this.requireHost(by);
+    const { rng } = this.requireGame();
+    return this.apply({ type: 'REMATCH', keepSpymasters }, rng);
+  }
+
+  backToLobby(by: string): RoomEvent[] {
+    this.requireHost(by);
+    const { game } = this.requireGame();
+    this.previousWords = game.cards.map((c) => c.word);
+    this.game = null;
+    this.rng = null;
+    this.status = 'lobby';
+    return [{ type: 'BACK_TO_LOBBY' }];
+  }
+
   view(forId: string): RoomView {
     return {
       code: this.code,
@@ -237,6 +372,7 @@ export class Room {
       status: this.status,
       scoreboard: this.scoreboard,
       startBlockers: this.startBlockers(),
+      game: this.game ? toPublicView(this.game, forId, this.paused()) : null,
     };
   }
 }

@@ -37,4 +37,5 @@ export {
   type Profile,
 } from './schemas/events';
 export { settingsPatchSchema, type SettingsPatch } from './schemas/settings';
+export type * from './types/game';
 export type * from './types/room';

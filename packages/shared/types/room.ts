@@ -1,4 +1,6 @@
-import type { GameEvent, PlayerTeam, Role, Team } from '../engine/types';
+import type { ClueRejection } from '../engine/clue';
+import type { EngineErrorCode, GameEvent, PlayerTeam, Role, Team } from '../engine/types';
+import type { GameView } from './game';
 import type { AvatarColor, ClientEventName, ClientPayload } from '../schemas/events';
 import type { Settings } from '../schemas/settings';
 
@@ -33,6 +35,8 @@ export interface RoomView {
   status: RoomStatus;
   scoreboard: Record<Team, number>;
   startBlockers: StartBlocker[];
+  /** Present from the start of a game until the room goes back to the lobby. */
+  game: GameView | null;
 }
 
 export type RoomEvent =
@@ -44,6 +48,7 @@ export type RoomEvent =
   | { type: 'TEAMS_RANDOMIZED' }
   | { type: 'SETTINGS_CHANGED' }
   | { type: 'HOST_CHANGED'; playerId: string }
+  | { type: 'BACK_TO_LOBBY' }
   | GameEvent;
 
 /** room:patch: a full filtered view (ADR-019) plus the events to animate, in order. */
@@ -65,11 +70,17 @@ export type ErrorCode =
   | 'PLAYER_NOT_FOUND'
   | 'CANNOT_KICK_SELF'
   | 'LOBBY_ONLY'
-  | 'INTERNAL';
+  | 'INTERNAL'
+  | 'NOT_PLAYING'
+  | 'GAME_PAUSED'
+  | 'CANNOT_START'
+  | EngineErrorCode;
 
 export interface ErrorPayload {
   code: ErrorCode;
   message: string;
+  /** For INVALID_CLUE: why the clue was refused and which board word it clashed with. */
+  clue?: { reason: ClueRejection; conflict?: string };
 }
 
 export type Ack<T extends object = object> =

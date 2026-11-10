@@ -61,6 +61,19 @@ export const clientEvents = {
   'lobby:randomize': z.object({}).strict(),
   'lobby:updateSettings': z.object({ settings: settingsPatchSchema }).strict(),
   'lobby:kick': z.object({ playerId: id }).strict(),
+  'game:start': z.object({}).strict(),
+  'game:clue': z
+    .object({
+      word: z.string().max(60),
+      count: z.union([z.number().int().min(0).max(9), z.literal('inf')]),
+    })
+    .strict(),
+  'game:point': z.object({ cardId: id.nullable() }).strict(),
+  'game:reveal': z.object({ cardId: id }).strict(),
+  'game:endGuessing': z.object({}).strict(),
+  'game:rematch': z.object({ keepSpymasters: z.boolean().default(false) }).strict(),
+  'game:backToLobby': z.object({}).strict(),
+  'game:setSpymaster': z.object({ playerId: id }).strict(),
 } as const;
 
 export type ClientEventName = keyof typeof clientEvents;
