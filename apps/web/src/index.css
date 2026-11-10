@@ -12,6 +12,13 @@
   --civil: #c9b994;
   --traitor: #111111;
   --accent: #e8c547;
+  /* Avatar accessory colors (SPEC §3.1). */
+  --acc-oro: #e8c547;
+  --acc-turquesa: #4fb3a9;
+  --acc-violeta: #a58bd4;
+  --acc-coral: #ef8a6f;
+  --acc-lima: #a9cf5b;
+  --acc-pizarra: #9aa7b8;
 }
 
 @theme inline {

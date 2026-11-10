@@ -1,7 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import './net/client';
 import { socket } from './net/socket';
-import { Landing } from './screens/Landing';
+import { App } from './App';
 import { bindConnection } from './store/connection';
 import './index.css';
 
@@ -14,6 +15,6 @@ if (!root) throw new Error('Missing #root element in index.html');
 
 createRoot(root).render(
   <StrictMode>
-    <Landing />
+    <App />
   </StrictMode>,
 );
