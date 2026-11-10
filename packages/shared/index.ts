@@ -6,8 +6,8 @@ export {
   type ClueRejection,
   type ClueValidation,
 } from './engine/clue';
-export { mulberry32, type Rng } from './engine/rng';
-export { BOARD_SIZE } from './engine/setup';
+export { mulberry32, pick, randomId, shuffle, type Rng } from './engine/rng';
+export { BOARD_SIZE, chooseWords } from './engine/setup';
 export * from './engine/types';
 export { HEALTH_PATH, healthResponseSchema, type HealthResponse } from './schemas/health';
 export {
