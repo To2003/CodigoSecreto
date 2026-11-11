@@ -66,5 +66,13 @@ export {
   type Profile,
 } from './schemas/events';
 export { settingsPatchSchema, type SettingsPatch } from './schemas/settings';
+export {
+  DECK_FILE_FORMAT,
+  deckFile,
+  deckFileSchema,
+  MAX_DECK_FILE_BYTES,
+  readDeckFile,
+  type DeckFile,
+} from './schemas/deckFile';
 export type * from './types/game';
 export type * from './types/room';

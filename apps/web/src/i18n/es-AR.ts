@@ -577,6 +577,13 @@ export const t = {
     customWordsRejected: (words: string[]) => `No se usaron: ${words.join(', ')}`,
     customWordsCount: (n: number) => (n === 1 ? '1 palabra propia' : `${n} palabras propias`),
     customShare: 'Porcentaje de palabras propias',
+    exportDeck: 'Exportar palabras (archivo)',
+    importDeck: 'Importar mazo (archivo)',
+    importInvalid: 'Ese archivo no es un mazo de Clave.',
+    importDone: (name: string, n: number) =>
+      `Se cargó "${name}": ${n} ${n === 1 ? 'palabra' : 'palabras'}.`,
+    deckName: (code: string) => `Mazo de la sala ${code}`,
+    deckFileName: (code: string) => `clave-mazo-${code.toLowerCase()}.json`,
     clueTimer: 'Tiempo para la pista',
     guessTimer: 'Tiempo para adivinar',
     timerOff: 'Sin tiempo',

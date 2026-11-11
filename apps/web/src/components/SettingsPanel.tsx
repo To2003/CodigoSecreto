@@ -1,6 +1,9 @@
 import {
   CLUE_TIMER_OPTIONS,
   DECK_INFO,
+  deckFile,
+  MAX_DECK_FILE_BYTES,
+  readDeckFile,
   GUESS_TIMER_OPTIONS,
   MAX_TEAM_NAME_LENGTH,
   parseCustomWords,
@@ -51,7 +54,29 @@ export function SettingsPanel({
   const s = view.settings;
   const id = useId();
   const [rejected, setRejected] = useState<string[]>([]);
+  const [deckNote, setDeckNote] = useState<string | null>(null);
   const savedWords = s.customWords.join(', ');
+
+  // Community decks (SPEC §12 M9.4): the room's own words as a JSON file, and back.
+  const exportDeck = () => {
+    const text = JSON.stringify(deckFile(t.settings.deckName(view.code), s.customWords), null, 2);
+    const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = t.settings.deckFileName(view.code);
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  const importDeck = async (file: File) => {
+    const deck = file.size > MAX_DECK_FILE_BYTES ? null : readDeckFile(await file.text());
+    if (!deck) {
+      setDeckNote(t.settings.importInvalid);
+      return;
+    }
+    setRejected(deck.rejected);
+    setDeckNote(t.settings.importDone(deck.name, deck.words.length));
+    patch({ customWords: deck.words });
+  };
 
   const patch = (settings: SettingsPatch) => {
     onError(null);
@@ -122,6 +147,35 @@ export function SettingsPanel({
             <span className="text-red-soft">{t.settings.customWordsRejected(rejected)}</span>
           )}
         </label>
+
+        <div className="flex flex-wrap items-center gap-2 md:col-span-2">
+          <button
+            type="button"
+            disabled={s.customWords.length === 0}
+            onClick={exportDeck}
+            className="rounded-md border border-paper/40 px-3 py-1.5 disabled:opacity-50"
+          >
+            {t.settings.exportDeck}
+          </button>
+          <label className="cursor-pointer rounded-md border border-paper/40 px-3 py-1.5 focus-within:outline-2 focus-within:outline-accent">
+            {t.settings.importDeck}
+            <input
+              type="file"
+              accept="application/json,.json"
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (file) void importDeck(file);
+              }}
+            />
+          </label>
+          {deckNote && (
+            <span role="status" className="text-paper/80">
+              {deckNote}
+            </span>
+          )}
+        </div>
 
         <label className="flex flex-col gap-1">
           {t.settings.customShare}
