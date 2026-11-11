@@ -5,10 +5,14 @@ const DOT: Record<ConnectionStatus, string> = {
   connecting: 'bg-accent',
   connected: 'bg-blue',
   reconnecting: 'bg-red',
+  disconnected: 'bg-red',
+  refused: 'bg-red',
 };
 
-export function ConnectionIndicator() {
+/** `compact`: on small screens only the dot shows; the text stays for screen readers. */
+export function ConnectionIndicator({ compact = false }: { compact?: boolean }) {
   const status = useConnection((s) => s.status);
+  const retry = useConnection((s) => s.retry);
   return (
     <p
       role="status"
@@ -17,7 +21,15 @@ export function ConnectionIndicator() {
       className="inline-flex items-center gap-2 text-sm text-paper"
     >
       <span aria-hidden="true" className={`size-2.5 rounded-full ${DOT[status]}`} />
-      {t.connection[status]}
+      {/* Compact hides only the reassuring "Conectado": problems always show in words (SPEC §5.6). */}
+      <span className={compact && status === 'connected' ? 'sr-only sm:not-sr-only' : ''}>
+        {t.connection[status]}
+      </span>
+      {status === 'refused' && (
+        <button type="button" className="font-semibold text-accent underline" onClick={retry}>
+          {t.connection.retry}
+        </button>
+      )}
     </p>
   );
 }

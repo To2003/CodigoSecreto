@@ -1,0 +1,14 @@
+[
+  {
+    "name": "Initial JS + CSS (SPEC §10: < 250 KB gzip)",
+    "path": ["dist/assets/index-*.js", "dist/assets/index-*.css"],
+    "limit": "250 KB",
+    "gzip": true
+  },
+  {
+    "name": "All JS + CSS, lazy chunks included (kept under the same bar)",
+    "path": ["dist/assets/*.js", "dist/assets/*.css"],
+    "limit": "250 KB",
+    "gzip": true
+  }
+]

@@ -35,10 +35,10 @@ Variables de entorno opcionales: copiá `apps/server/.env.example` a `apps/serve
 | `pnpm lint`       | ESLint                                                          |
 | `pnpm typecheck`  | `tsc --noEmit` en todos los paquetes                            |
 | `pnpm format`     | Prettier                                                        |
-| `pnpm build`      | Build de web (`apps/web/dist`) y server (`apps/server/dist`)    |
+| `pnpm build`      | Build de web y server (el de web exige `VITE_SERVER_URL`)       |
 | `pnpm check:fast` | typecheck + lint + formato + floor guard (corre en cada commit) |
 | `pnpm check:task` | `check:fast` + tests con cobertura                              |
-| `pnpm check:full` | `check:task` + build                                            |
+| `pnpm check:full` | `check:task` + build (con `VITE_SERVER_URL` local)              |
 
 El hook de pre-commit corre `check:fast` y los tests de `packages/shared`.
 

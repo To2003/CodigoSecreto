@@ -12,7 +12,7 @@ conditions:
     pattern: \.emit\(
   - field: content
     operator: regex_match
-    pattern: cards|keyMap|\.type\b
+    pattern: cards|keyMap|\.type\b|state|room|board|game
   - field: content
     operator: not_contains
     pattern: toPublicView
@@ -26,4 +26,4 @@ Este código emite algo que menciona cartas/tipos y no pasa por `toPublicView(st
 - El `type` de una carta no revelada solo puede llegar a un jefe.
 - Corré el test anti-filtración (`apps/server/src/views/anti-leak.test.ts`) antes de seguir.
 
-Es una heurística: si el emit no lleva estado de cartas, ignorá el aviso.
+Es una heurística (solo ve el texto que estás escribiendo, no lo que se hace por Bash): si el emit no lleva estado de partida, ignorá el aviso. La garantía real es el test anti-filtración.

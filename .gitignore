@@ -11,3 +11,4 @@ test-results/
 .DS_Store
 # Las reglas de hookify (.claude/hookify.*.local.md) se commitean a propósito (ADR-014)
 .claude/settings.local.json
+.lighthouseci/

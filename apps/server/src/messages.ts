@@ -1,0 +1,52 @@
+import type { ErrorCode } from '@clave/shared';
+
+/**
+ * Server-side text for error acks (SPEC §2.2: "mensajes en castellano rioplatense"). The web app
+ * shows its own copy from es-AR.ts by code; this text is for logs and any other client.
+ */
+export const ERROR_MESSAGES: Record<ErrorCode, string> = {
+  BAD_REQUEST: 'Eso no se entendió. Probá de nuevo.',
+  RATE_LIMITED: 'Más despacio, che: estás mandando demasiadas cosas.',
+  ROOM_NOT_FOUND: 'No existe esa sala. Revisá el código.',
+  ROOM_FULL: 'La sala está llena (16 jugadores).',
+  NOT_IN_ROOM: 'No estás en ninguna sala.',
+  NOT_HOST: 'Eso lo puede hacer solo quien armó la sala.',
+  INVALID_NICKNAME: 'Poné un apodo con al menos una letra.',
+  SPYMASTER_TAKEN: 'Ese equipo ya tiene jefe.',
+  PLAYER_NOT_FOUND: 'No encontramos a ese jugador.',
+  CANNOT_KICK_SELF: 'No te podés echar a vos mismo.',
+  LOBBY_ONLY: 'Eso se cambia en el lobby, no durante la partida.',
+  INTERNAL: 'Algo se rompió de nuestro lado. Probá de nuevo.',
+  NOT_PLAYING: 'No hay partida en curso.',
+  GAME_PAUSED: 'La partida está en pausa hasta que vuelva el jefe.',
+  NOT_PAUSED: 'Solo se cambia el jefe cuando la partida está en pausa por su ausencia.',
+  PLAYER_UNAVAILABLE: 'Tiene que ser un agente conectado de ese equipo.',
+  NO_AGENT_LEFT: 'Si lo hacés jefe, el equipo se queda sin agentes para adivinar.',
+  CHAT_DISABLED: 'El chat está apagado en esta sala.',
+  CHAT_NOT_ALLOWED: 'Quien ve el mapa no escribe durante la partida: solo emotes.',
+  EMOTE_NOT_NOW: 'Mientras tu equipo adivina, los jefes no mandan emotes: serían una seña.',
+  JOIN_LIMITED:
+    'Hubo demasiados intentos de entrar a salas desde tu red. Esperá un minuto y probá de nuevo.',
+  CANNOT_START: 'Todavía no se puede empezar: faltan jugadores o palabras.',
+  GAME_IN_PROGRESS: 'Ya hay una partida en curso.',
+  NO_GAME: 'No hay ninguna partida en curso.',
+  MODE_NOT_AVAILABLE: 'El modo cooperativo todavía no está disponible.',
+  TEAMS_INCOMPLETE: 'Cada equipo necesita un jefe y al menos un agente.',
+  NOT_ENOUGH_WORDS: 'Faltan palabras: elegí un mazo o cargá al menos 25.',
+  WRONG_PHASE: 'Ahora no se puede hacer eso.',
+  NOT_A_PLAYER: 'No estás jugando esta partida.',
+  WRONG_TEAM: 'Ese jugador no es de ese equipo.',
+  NOT_YOUR_TURN: 'No es el turno de tu equipo.',
+  WRONG_ROLE: 'Eso no lo hace tu rol.',
+  INVALID_CLUE: 'No vale, esa pista no se puede dar.',
+  INVALID_COUNT: 'El número tiene que ser de 0 a 9, o ∞.',
+  CARD_NOT_FOUND: 'Esa carta no existe.',
+  CARD_ALREADY_REVEALED: 'Esa carta ya está dada vuelta.',
+  MUST_GUESS_FIRST: 'Primero tienen que arriesgar al menos una carta.',
+  REVEAL_BY_MAJORITY: 'En esta sala se revela cuando la mayoría del equipo señala la misma carta.',
+  OBJECTIONS_DISABLED: 'En esta sala no hay objeciones.',
+  OBJECTION_TOO_LATE: 'Ya se dio vuelta una carta: tarde para objetar.',
+  ALREADY_OBJECTED: 'Esa pista ya se objetó.',
+  NOT_A_VOTER: 'No votás en esta objeción.',
+  ALREADY_VOTED: 'Ya votaste.',
+};

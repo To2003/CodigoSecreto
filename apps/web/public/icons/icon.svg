@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Clave: a keyhole inside a rubber stamp ring on the desk color. Original art (art/LICENSES.md). -->
+  <rect width="512" height="512" rx="96" fill="#1b1e24"/>
+  <circle cx="256" cy="256" r="176" fill="none" stroke="#d6453d" stroke-width="22"/>
+  <circle cx="256" cy="256" r="146" fill="none" stroke="#d6453d" stroke-width="8"/>
+  <circle cx="256" cy="214" r="58" fill="#e8c547"/>
+  <path d="M222 244 L290 244 L314 352 L198 352 Z" fill="#e8c547"/>
+</svg>

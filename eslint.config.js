@@ -21,6 +21,9 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
+      // Conflicts with no-non-null-assertion (strict): one asks for `!`, the other forbids it.
+      // We keep the strict rule and allow a commented `as` for proven invariants.
+      '@typescript-eslint/non-nullable-type-assertion-style': 'off',
     },
   },
 
@@ -32,6 +35,12 @@ export default tseslint.config(
       ...tseslint.configs.disableTypeChecked.languageOptions,
       globals: globals.node,
     },
+  },
+
+  // The web app's service worker runs in a ServiceWorkerGlobalScope, not in Node.
+  {
+    files: ['apps/web/public/sw.js'],
+    languageOptions: { globals: globals.serviceworker },
   },
 
   // Server: Node.
@@ -56,7 +65,30 @@ export default tseslint.config(
   {
     files: ['apps/web/src/**/*.tsx'],
     plugins: { i18next },
-    rules: { 'i18next/no-literal-string': ['error', { mode: 'jsx-text-only' }] },
+    rules: {
+      'i18next/no-literal-string': [
+        'error',
+        {
+          // JSX text, string expressions ({'…'}) and the attributes people read or hear.
+          mode: 'jsx-only',
+          'jsx-attributes': {
+            include: [
+              'placeholder',
+              'title',
+              'alt',
+              'label',
+              'aria-label',
+              'aria-description',
+              'aria-placeholder',
+              'aria-roledescription',
+              'aria-valuetext',
+            ],
+            // Every other attribute (className, SVG geometry, data-*, …) is not copy.
+            exclude: ['.*'],
+          },
+        },
+      ],
+    },
   },
 
   prettier,
