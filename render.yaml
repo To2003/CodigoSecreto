@@ -23,3 +23,16 @@ services:
         value: '10'
       - key: LOG_LEVEL
         value: info
+      - key: NODE_ENV
+        value: production
+      # Optional accounts (docs/specs/M9-cuentas.md). Without them everyone plays as a guest.
+      # Set in the dashboard, never here: AUTH_MODE=supabase plus the two Supabase values.
+      - key: AUTH_MODE
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      # SECRET. Only in Render's environment; never in the repo, the web app or a log.
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: STATS_MIN_GAME_SECONDS
+        value: '300'
