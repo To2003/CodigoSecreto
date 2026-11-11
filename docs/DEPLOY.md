@@ -6,9 +6,9 @@ El orden importa: primero el server (para tener su URL), después la web (que ne
 
 ## 0. Antes de empezar
 
-1. **Creá la rama `main`** (hoy el repo solo tiene `claude/sweet-wozniak-r3mw7t`): en GitHub → pestaña **Code** → el selector de ramas (dice `claude/sweet-wozniak-r3mw7t`) → escribí `main` → **Create branch: main from 'claude/sweet-wozniak-r3mw7t'**.
-2. Hacela la rama por defecto: **Settings → General → Default branch** → el ícono de las flechas → elegí `main` → **Update** y confirmá. Render y Vercel van a deployar desde `main`.
-3. En la pestaña **Actions**: el workflow **CI** corre solo al crear `main` (y en cada push y PR después). Esperá a que esté en verde. Si algún job falla, el log dice cuál (tipos, lint, tests, E2E, Lighthouse o seguridad); el reporte de Lighthouse queda como artefacto del job ("lighthouse-report").
+1. **Mergeá el PR a `main`**: la rama `main` ya existe (arranca en la base de herramientas de M0) y hay un PR abierto desde `claude/sweet-wozniak-r3mw7t` con todo el juego. Esperá a que el CI del PR esté en verde y apretá **Merge pull request** ("Create a merge commit").
+2. Hacé `main` la rama por defecto: **Settings → General → Default branch** → el ícono de las flechas → elegí `main` → **Update** y confirmá. Render y Vercel van a deployar desde `main`.
+3. En la pestaña **Actions**: el workflow **CI** corre en el PR y en cada push a `main`. Si algún job falla, el log dice cuál (tipos, lint, tests, E2E, Lighthouse o seguridad); el reporte de Lighthouse queda como artefacto del job ("lighthouse-report").
 
 ## 1. Server en Render
 
