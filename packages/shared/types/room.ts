@@ -1,6 +1,7 @@
 import type { ClueRejection } from '../engine/clue';
+import type { CoopEvent } from '../engine/coop';
 import type { EngineErrorCode, GameEvent, PlayerTeam, Role, Team } from '../engine/types';
-import type { GameView } from './game';
+import type { CoopView, GameView } from './game';
 import type { AvatarColor, ClientEventName, ClientPayload, EmoteId } from '../schemas/events';
 import type { Settings } from '../schemas/settings';
 
@@ -42,6 +43,8 @@ export interface RoomView {
   chatMuted: boolean;
   /** Present from the start of a game until the room goes back to the lobby. */
   game: GameView | null;
+  /** The cooperative game (M9.1), when the room plays that mode; `game` is null then. */
+  coop: CoopView | null;
 }
 
 export type RoomEvent =
@@ -54,7 +57,8 @@ export type RoomEvent =
   | { type: 'SETTINGS_CHANGED' }
   | { type: 'HOST_CHANGED'; playerId: string }
   | { type: 'BACK_TO_LOBBY' }
-  | GameEvent;
+  | GameEvent
+  | CoopEvent;
 
 /** room:patch: a full filtered view (ADR-019) plus the events to animate, in order. */
 export interface RoomPatch {

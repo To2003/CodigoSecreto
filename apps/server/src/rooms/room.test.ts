@@ -225,15 +225,12 @@ describe('startBlockers (SPEC §3.1)', () => {
     ]);
   });
 
-  it('flags missing words and the cooperative mode', () => {
+  it('flags missing words and a cooperative room with too many players', () => {
     const [a, b] = fourPlayers();
     room.setRole(a ?? '', 'spymaster');
     room.setRole(b ?? '', 'spymaster');
     room.updateSettings(a ?? '', { deckIds: [], customWords: ['UNO', 'DOS'], mode: 'coop' });
-    expect(room.startBlockers()).toEqual([
-      { code: 'MODE_NOT_AVAILABLE' },
-      { code: 'NOT_ENOUGH_WORDS' },
-    ]);
+    expect(room.startBlockers()).toEqual([{ code: 'COOP_PLAYERS' }, { code: 'NOT_ENOUGH_WORDS' }]);
   });
 });
 

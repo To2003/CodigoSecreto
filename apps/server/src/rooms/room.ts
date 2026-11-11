@@ -1,7 +1,10 @@
 import { timingSafeEqual } from 'node:crypto';
 import {
   applyAction,
+  applyCoopAction,
   chooseWords,
+  coopBlocker,
+  startCoop,
   rotateSpymasters,
   MAX_PLAYERS,
   sanitizeChat,
@@ -12,6 +15,9 @@ import {
   DEFAULT_SETTINGS,
   type Action,
   type ChatMessage,
+  type CoopAction,
+  type CoopEvent,
+  type CoopState,
   type EmoteEvent,
   type EmoteId,
   type EnginePlayer,
@@ -33,6 +39,7 @@ import {
   type Team,
   type TimerView,
 } from '@clave/shared';
+import { toCoopView } from '../views/coopView';
 import { toPublicView } from '../views/gameView';
 
 /** Team problems that keep a game from starting: a connected spymaster and agent per team. */
@@ -120,6 +127,8 @@ export class Room {
   seq = 0;
   /** Full game state, types included. Leaves the server only through toPublicView. */
   game: GameState | null = null;
+  /** Cooperative game (M9.1), when the room plays that mode; `game` stays null then. */
+  coop: CoopState | null = null;
   private rng: Rng | null = null;
   /** Words of the last game, avoided by the next one (SPEC §7). */
   private previousWords: string[] = [];
@@ -320,8 +329,11 @@ export class Room {
 
   startBlockers(): StartBlocker[] {
     const blockers: StartBlocker[] = [];
-    if (this.settings.mode !== 'classic') blockers.push({ code: 'MODE_NOT_AVAILABLE' });
-    blockers.push(...teamBlockers(this.players));
+    if (this.settings.mode === 'coop') {
+      if (coopBlocker(this.enginePlayers())) blockers.push({ code: 'COOP_PLAYERS' });
+    } else {
+      blockers.push(...teamBlockers(this.players));
+    }
     // Same word selection the engine runs at start; only the count matters, so any rng will do.
     if (!chooseWords(this.settings, () => 0)) blockers.push({ code: 'NOT_ENOUGH_WORDS' });
     return blockers;
@@ -512,7 +524,53 @@ export class Room {
     this.requireLobby();
     if (this.startBlockers().length > 0) throw new RoomError('CANNOT_START');
     this.game = null;
+    this.coop = null;
+    if (this.settings.mode === 'coop') return this.newCoopGame(this.enginePlayers(), rng);
     return this.newGame(this.enginePlayers(), rng);
+  }
+
+  // ── cooperative mode (M9.1, docs/specs/M9-cooperativo.md) ──────────────
+
+  private newCoopGame(players: EnginePlayer[], rng: Rng): RoomEvent[] {
+    const previous = this.coop?.cards.map((c) => c.word);
+    if (previous) this.previousWords = previous;
+    const words = chooseWords(this.settings, rng, this.previousWords);
+    if (!words) throw new RoomError('NOT_ENOUGH_WORDS');
+    const res = startCoop(players, words, this.settings.compoundWords, rng);
+    if (!res.ok) throw new RoomError(res.error.code);
+    // Kept for the rematch; the cooperative actions themselves need no randomness.
+    this.rng = rng;
+    return this.applyCoop(res.state, res.events);
+  }
+
+  private applyCoop(state: CoopState, events: CoopEvent[]): RoomEvent[] {
+    this.coop = state;
+    for (const e of events) {
+      if (e.type === 'COOP_STARTED') {
+        this.status = 'playing';
+        this.gameStartedAt = this.clock();
+        this.gameEndedAt = null;
+      }
+      if (e.type === 'COOP_OVER') {
+        this.status = 'over';
+        this.gameEndedAt = this.clock();
+      }
+    }
+    return events;
+  }
+
+  /** Clue, reveal and end of turn in cooperative mode; anything else doesn't exist there. */
+  private actCoop(state: CoopState, action: PlayerAction): RoomEvent[] {
+    if (
+      action.type !== 'GIVE_CLUE' &&
+      action.type !== 'REVEAL_CARD' &&
+      action.type !== 'END_GUESSING'
+    ) {
+      throw new RoomError('WRONG_PHASE');
+    }
+    const res = applyCoopAction(state, action satisfies CoopAction);
+    if (!res.ok) throw new RoomError(res.error.code, res.error.clue);
+    return this.applyCoop(res.state, res.events);
   }
 
   /**
@@ -538,6 +596,10 @@ export class Room {
   }
 
   act(playerId: string, action: PlayerAction): RoomEvent[] {
+    if (this.coop && this.status !== 'lobby') {
+      if (action.playerId !== playerId) throw new RoomError('BAD_REQUEST');
+      return this.actCoop(this.coop, action);
+    }
     const { rng } = this.requireGame();
     if (this.paused()) throw new RoomError('GAME_PAUSED');
     if (action.playerId !== playerId) throw new RoomError('BAD_REQUEST');
@@ -575,6 +637,11 @@ export class Room {
    */
   rematch(by: string, keepSpymasters: boolean): RoomEvent[] {
     this.requireHost(by);
+    if (this.coop && this.rng && this.status !== 'lobby') {
+      if (this.status !== 'over') throw new RoomError('GAME_IN_PROGRESS');
+      if (coopBlocker(this.enginePlayers())) throw new RoomError('CANNOT_START');
+      return this.newCoopGame(this.enginePlayers(), this.rng);
+    }
     const { rng } = this.requireGame();
     if (this.status !== 'over') throw new RoomError('GAME_IN_PROGRESS');
     const players = keepSpymasters ? this.enginePlayers() : rotateSpymasters(this.enginePlayers());
@@ -584,9 +651,11 @@ export class Room {
 
   backToLobby(by: string): RoomEvent[] {
     this.requireHost(by);
-    const { game } = this.requireGame();
-    this.previousWords = game.cards.map((c) => c.word);
+    const cards =
+      this.coop && this.status !== 'lobby' ? this.coop.cards : this.requireGame().game.cards;
+    this.previousWords = cards.map((c) => c.word);
     this.game = null;
+    this.coop = null;
     this.rng = null;
     this.status = 'lobby';
     this.syncTimer();
@@ -612,6 +681,7 @@ export class Room {
       scoreboard: this.scoreboard,
       startBlockers: this.startBlockers(),
       chatMuted: this.mutedInGame(forId),
+      coop: this.coop ? toCoopView(this.coop, forId) : null,
       game: this.game
         ? toPublicView(this.game, forId, this.paused(), {
             timer: this.timerView(),
