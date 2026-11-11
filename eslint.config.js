@@ -37,6 +37,12 @@ export default tseslint.config(
     },
   },
 
+  // The web app's service worker runs in a ServiceWorkerGlobalScope, not in Node.
+  {
+    files: ['apps/web/public/sw.js'],
+    languageOptions: { globals: globals.serviceworker },
+  },
+
   // Server: Node.
   {
     files: ['apps/server/**/*.ts'],

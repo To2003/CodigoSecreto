@@ -32,6 +32,14 @@ document.addEventListener('animationend', (e) => {
   if (e.target instanceof HTMLElement && e.target.classList.contains('anim-move'))
     e.target.dataset.animDone = '';
 });
+// Installable app (SPEC §12 M9.5). Only in production builds: in dev it would cache Vite's files.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err: unknown) => {
+      console.warn('Clave: no se pudo registrar el service worker', err);
+    });
+  });
+}
 bindConnection(socket);
 // Wake a sleeping server as early as possible (SPEC §0.4), alongside the socket.
 wakeServer();

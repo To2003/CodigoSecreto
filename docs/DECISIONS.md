@@ -259,3 +259,10 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Decisión**: `/sala/CÓDIGO/mesa` es una pantalla, no un jugador: entra sola como espectadora con el nombre "Mesa" y muestra el tablero grande, los contadores, el turno, la pista y el timer. **Nunca** muestra el mapa (aunque la sala deje a los espectadores verlo): está a la vista de todos. Los jefes ven el mapa en el celu, como en una partida online.
 - **Asiento propio**: la mesa guarda su asiento con otra clave (`CÓDIGO:mesa`), así abrirla en otra pestaña del mismo navegador del host no le roba el lugar.
 - **Desde el lobby**: el link "Abrir pantalla de mesa" abre otra pestaña, para que quien la abre no pierda su asiento. Sin QR por ahora (pediría una dependencia más); la mesa muestra la dirección de la sala en grande.
+
+## ADR-031 — PWA instalable a mano, sin plugin (M9.5)
+
+- **Estado**: Aceptada (2026-11-11, M9, modo autónomo)
+- **Decisión**: `manifest.webmanifest`, íconos propios (SVG en código, PNG renderizados de ese SVG) y un service worker escrito a mano (`public/sw.js`), registrado solo en el build de producción. Sin `vite-plugin-pwa`: es una dependencia más para unas 50 líneas.
+- **Qué cachea**: la página con red primero (un deploy nuevo se ve enseguida) y el último shell guardado si no hay red; `/assets/*` e íconos con caché primero (llevan hash). Nunca toca el server del juego (otro origen): sin red, la app abre pero muestra que no conecta, que es la verdad.
+- **Vercel**: `/sw.js` con `Cache-Control: no-cache`, para que una versión nueva del worker se tome en la próxima visita.
