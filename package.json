@@ -46,5 +46,10 @@
   "simple-git-hooks": {
     "pre-commit": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm --filter @clave/shared test",
     "commit-msg": "node scripts/floor-guard.mjs --staged --commit-msg \"$1\""
+  },
+  "pnpm": {
+    "overrides": {
+      "minimatch@>=7.0.0 <11.0.1": "^11.0.8"
+    }
   }
 }
