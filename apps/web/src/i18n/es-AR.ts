@@ -3,6 +3,7 @@ import type {
   CardType,
   ClueCount,
   ClueRejection,
+  CoopKey,
   EmoteId,
   ErrorCode,
   StartBlocker,
@@ -105,6 +106,8 @@ export const t = {
           return 'Faltan palabras: elegí un mazo o cargá al menos 25.';
         case 'MODE_NOT_AVAILABLE':
           return 'El modo cooperativo todavía no está disponible.';
+        case 'COOP_PLAYERS':
+          return 'El cooperativo es para 2 o 3 jugadores, con al menos uno en cada lado.';
       }
     },
   },
@@ -457,6 +460,37 @@ export const t = {
     objection:
       'Si la pista del rival rompe las reglas (rimas, letras, posiciones), la podés objetar antes de que den vuelta la primera carta.',
   },
+  coop: {
+    side: { red: 'Lado A', blue: 'Lado B' } satisfies Record<Team, string>,
+    sideShort: { red: 'A', blue: 'B' } satisfies Record<Team, string>,
+    agentsLeft: (n: number) => (n === 1 ? 'Falta 1 agente' : `Faltan ${n} agentes`),
+    turnsLeft: (n: number) => (n === 1 ? 'Queda 1 turno' : `Quedan ${n} turnos`),
+    yourClue: 'Te toca dar la pista: mirá tu mapa y conectá tus agentes.',
+    waitingClue: (side: string) => `El ${side} está pensando una pista…`,
+    yourGuess: (clue: string) => `Pista del otro lado: ${clue}. ¿Cuáles son?`,
+    theyGuess: (clue: string) => `Tus compañeros están adivinando con ${clue}.`,
+    guessHint: 'Tocá una carta para darla vuelta, según el mapa de quien dio la pista.',
+    civilianFor: (side: string) => `civil para ${side}`,
+    found: 'encontrado',
+    keyLabel: { agent: 'agente', civilian: 'civil', traitor: 'traidor' } satisfies Record<
+      CoopKey,
+      string
+    >,
+    cardLabel: (word: string, parts: string[]) => [word, ...parts].join(', '),
+    reveal: (word: string) => `Dar vuelta ${word}`,
+    won: '¡Misión cumplida! Encontraron a los 15 agentes.',
+    lost: {
+      traitor: 'Tocaron a un traidor. Misión fallida.',
+      turns: 'Se les terminaron los turnos.',
+    },
+    news: {
+      agent: (word: string) => `${word}: ¡agente!`,
+      civilian: (word: string) => `${word}: civil. Se terminó el turno.`,
+      traitor: (word: string) => `${word}: ¡traidor!`,
+    } satisfies Record<CoopKey, (word: string) => string>,
+    rematch: 'Otra partida',
+    mapOf: (side: string) => `Mapa del ${side}`,
+  },
   wake: {
     title: 'Despertando a los agentes…',
     body: 'El servidor gratis se duerme cuando nadie juega. Tarda hasta un minuto en levantarse.',
@@ -510,7 +544,7 @@ export const t = {
     title: 'Configuración',
     readOnly: 'Solo quien armó la sala puede cambiarla.',
     mode: 'Modo',
-    modes: { classic: 'Clásico', coop: 'Cooperativo (próximamente)' },
+    modes: { classic: 'Clásico', coop: 'Cooperativo (2 o 3 jugadores)' },
     decks: 'Mazos',
     customWords: 'Palabras propias',
     customWordsHelp:
