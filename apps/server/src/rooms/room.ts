@@ -3,6 +3,8 @@ import {
   applyAction,
   applyCoopAction,
   chooseWords,
+  gameCountsForStats,
+  resultsFor,
   coopBlocker,
   coopEmoteBlocked,
   emoteBlocked,
@@ -17,6 +19,9 @@ import {
   DEFAULT_SETTINGS,
   type Action,
   type ChatMessage,
+  type GameResult,
+  type LikesView,
+  type RosterEntry,
   type CoopAction,
   type CoopEvent,
   type CoopState,
@@ -110,7 +115,25 @@ export interface RoomPlayer extends PublicPlayer {
   /** Secret that lets this player reclaim their seat. Never serialized into a view. */
   token: string;
   disconnectedAt: number | null;
+  /** The account behind this seat, if signed in. Server-only: never in a view or payload. */
+  userId?: string;
 }
+
+/** A finished game's results for signed-in players, ready to save (docs/specs/M9-cuentas.md §3). */
+export interface FinishedGame {
+  results: { userId: string; result: GameResult }[];
+}
+
+/** What a like should do outside the room: tell the receiver, and maybe keep it (spec §5). */
+export interface LikeOutcome {
+  receiverId: string;
+  received: number;
+  /** Set only when the like should be kept: the game counts and the receiver has an account. */
+  keep: { receiverUserId: string; giverKey: string } | null;
+}
+
+/** Stats only count games that lasted this long (spec §3; STATS_MIN_GAME_SECONDS). */
+export const DEFAULT_STATS_MIN_GAME_MS = 300_000;
 
 const sameSecret = (a: string, b: string) => {
   const x = Buffer.from(a);
@@ -155,10 +178,21 @@ export class Room {
    * `clock` drives the game timers and chat limits; the store passes the server clock. By default
    * time stands still at `createdAt`, so tests that don't care about time stay deterministic.
    */
+  /** Who started the current classic game, with their account and role at the start. */
+  private roster: (RosterEntry & { userId?: string })[] = [];
+  /** Who was spymaster when each clue of the current game was given (spec §3). */
+  private clueGivers: string[] = [];
+  /** Whether the game that just ended counts for stats (and so keeps likes). */
+  private counts = false;
+  private finished: FinishedGame | null = null;
+  private likesGiven = new Set<string>();
+  private likesReceived = new Map<string, number>();
+
   constructor(
     readonly code: string,
     readonly createdAt: number,
     private readonly clock: () => number = () => createdAt,
+    private readonly statsMinGameMs = DEFAULT_STATS_MIN_GAME_MS,
   ) {
     this.emptySince = createdAt;
   }
@@ -183,7 +217,12 @@ export class Room {
     else this.emptySince ??= now;
   }
 
-  join(profile: Profile, now: number, ids: { id: string; token: string }) {
+  /** A seat for this account, unless it already has one here: a second tab plays as a guest. */
+  private freeUserId(userId: string | undefined): string | undefined {
+    return userId && !this.players.some((p) => p.userId === userId) ? userId : undefined;
+  }
+
+  join(profile: Profile, now: number, ids: { id: string; token: string }, userId?: string) {
     if (this.players.length >= MAX_PLAYERS) throw new RoomError('ROOM_FULL');
     const nickname = sanitizeNickname(profile.nickname);
     if (nickname === '') throw new RoomError('INVALID_NICKNAME');
@@ -201,6 +240,8 @@ export class Room {
       connected: true,
       disconnectedAt: null,
     };
+    const account = this.freeUserId(userId);
+    if (account) player.userId = account;
     this.players.push(player);
     if (this.hostId === '') this.hostId = player.id;
     this.updateEmptySince(now);
@@ -209,9 +250,14 @@ export class Room {
   }
 
   /** Reclaims a seat with the token handed out on join (F5, network drop). */
-  rejoin(playerId: string, token: string, now: number) {
+  rejoin(playerId: string, token: string, now: number, userId?: string) {
     const player = this.players.find((p) => p.id === playerId);
     if (!player || !sameSecret(player.token, token)) throw new RoomError('PLAYER_NOT_FOUND');
+    // A guest seat picks up the account of whoever reclaims it; an account's seat keeps its owner.
+    if (!player.userId) {
+      const account = this.freeUserId(userId);
+      if (account) player.userId = account;
+    }
     return { player, events: this.setConnected(playerId, true, now) };
   }
 
@@ -364,6 +410,17 @@ export class Room {
     }
     for (const e of res.events) {
       if (e.type === 'GAME_STARTED') {
+        this.roster = res.state.players
+          .filter((p): p is typeof p & { team: Team } => p.team !== 'spectator')
+          .map((p) => {
+            const userId = this.players.find((r) => r.id === p.id)?.userId;
+            return { playerId: p.id, team: p.team, role: p.role, ...(userId ? { userId } : {}) };
+          });
+        this.clueGivers = [];
+        this.counts = false;
+        this.finished = null;
+        this.likesGiven = new Set();
+        this.likesReceived = new Map();
         this.mapSeers = new Set(
           res.state.players
             .filter((p) =>
@@ -376,10 +433,15 @@ export class Room {
         this.gameEndedAt = null;
       }
       if (e.type === 'SPYMASTER_CHANGED') this.mapSeers.add(e.playerId);
+      if (e.type === 'CLUE_GIVEN') {
+        const giver = res.state.players.find((p) => p.team === e.team && p.role === 'spymaster');
+        this.clueGivers.push(giver?.id ?? '');
+      }
       if (e.type === 'GAME_OVER') {
         this.status = 'over';
         this.scoreboard[e.winner] += 1;
         this.gameEndedAt = this.clock();
+        this.finishStats(res.state, e.winner);
       }
     }
     this.syncTimer();
@@ -452,6 +514,62 @@ export class Room {
     const deadline = this.timer?.deadline;
     if (deadline == null || this.clock() < deadline || !this.rng) return [];
     return this.apply({ type: 'TIMER_EXPIRED' }, this.rng);
+  }
+
+  // ── accounts: stats and likes (docs/specs/M9-cuentas.md) ───────────────
+
+  private finishStats(game: GameState, winner: Team) {
+    this.counts = gameCountsForStats({
+      mode: 'classic',
+      players: this.roster.length,
+      durationMs: (this.gameEndedAt ?? this.gameStartedAt) - this.gameStartedAt,
+      minDurationMs: this.statsMinGameMs,
+    });
+    if (!this.counts) return;
+    const results = resultsFor(this.roster, game.clues, this.clueGivers, winner);
+    const signedIn = this.roster.flatMap((p) => {
+      const result = results.get(p.playerId);
+      return p.userId && result ? [{ userId: p.userId, result }] : [];
+    });
+    this.finished = signedIn.length > 0 ? { results: signedIn } : null;
+  }
+
+  /** The results of the game that just ended, once: the server saves them. */
+  takeFinishedGame(): FinishedGame | null {
+    const finished = this.finished;
+    this.finished = null;
+    return finished;
+  }
+
+  /**
+   * A like at the end of a classic game (spec §5): between two players who started it, one per
+   * giver per game, never to yourself or another seat of your own account.
+   */
+  like(giverId: string, receiverId: string): LikeOutcome {
+    if (this.status !== 'over' || !this.game || this.coop) throw new RoomError('LIKES_NOT_NOW');
+    const giver = this.roster.find((p) => p.playerId === giverId);
+    const receiver = this.roster.find((p) => p.playerId === receiverId);
+    if (!giver || !receiver || giverId === receiverId) throw new RoomError('LIKE_NOT_ALLOWED');
+    if (giver.userId && giver.userId === receiver.userId) throw new RoomError('LIKE_NOT_ALLOWED');
+    if (this.likesGiven.has(giverId)) throw new RoomError('ALREADY_LIKED');
+    this.likesGiven.add(giverId);
+    const received = (this.likesReceived.get(receiverId) ?? 0) + 1;
+    this.likesReceived.set(receiverId, received);
+    return {
+      receiverId,
+      received,
+      keep:
+        this.counts && receiver.userId
+          ? { receiverUserId: receiver.userId, giverKey: giver.userId ?? 'guest' }
+          : null,
+    };
+  }
+
+  /** This viewer's likes at the end of a classic game they played; null otherwise. */
+  private likesView(forId: string): LikesView | null {
+    if (this.status !== 'over' || !this.game || this.coop) return null;
+    if (!this.roster.some((p) => p.playerId === forId)) return null;
+    return { given: this.likesGiven.has(forId), received: this.likesReceived.get(forId) ?? 0 };
   }
 
   // ── chat and emotes (SPEC §9) ───────────────────────────────────────────
@@ -703,6 +821,7 @@ export class Room {
       startBlockers: this.startBlockers(),
       chatMuted: this.mutedInGame(forId),
       emotesMuted: this.emoteMuted(forId),
+      likes: this.likesView(forId),
       coop: this.coop ? toCoopView(this.coop, forId) : null,
       game: this.game
         ? toPublicView(this.game, forId, this.paused(), {

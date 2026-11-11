@@ -54,6 +54,9 @@ export const DEFAULT_SETTINGS: Settings = settingsSchema.parse({});
 
 const CUSTOM_WORD = /^\p{L}{2,14}$/u;
 
+/** An account's public name (docs/specs/M9-cuentas.md §2): same rules as a nickname. */
+export const displayNameSchema = z.object({ displayName: z.string().max(100) }).strict();
+
 /**
  * Host-pasted words (SPEC §7): separated by commas or newlines. Kept: one word of 2–14 letters,
  * uppercased, without duplicates. Everything else comes back in `rejected` so the UI can say why.

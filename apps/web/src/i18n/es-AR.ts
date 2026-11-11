@@ -618,6 +618,10 @@ export const t = {
     NO_AGENT_LEFT: 'Si lo hacés jefe, el equipo se queda sin agentes para adivinar.',
     CHAT_DISABLED: 'El chat está apagado en esta sala.',
     CHAT_NOT_ALLOWED: 'Quien ve el mapa no escribe durante la partida: solo emotes.',
+    LIKES_NOT_NOW: 'Los likes se dan al terminar la partida, no durante.',
+    LIKE_NOT_ALLOWED:
+      'Ese like no se puede dar: tiene que ser a otra persona que jugó esta partida.',
+    ALREADY_LIKED: 'Ya diste tu like en esta partida.',
     EMOTE_NOT_NOW: 'Mientras tu equipo adivina, los jefes no mandan emotes: serían una seña.',
     JOIN_LIMITED:
       'Hubo demasiados intentos de entrar a salas desde tu red. Esperá un minuto y probá de nuevo.',

@@ -98,6 +98,7 @@ export const clientEvents = {
   'game:vote': z.object({ accept: z.boolean() }).strict(),
   'chat:send': z.object({ text: z.string().max(1000), scope: z.enum(['all', 'team']) }).strict(),
   'emote:send': z.object({ emoteId: z.enum(EMOTES) }).strict(),
+  'like:give': z.object({ playerId: id }).strict(),
 } as const;
 
 export type ClientEventName = keyof typeof clientEvents;
