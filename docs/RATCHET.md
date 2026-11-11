@@ -6,8 +6,8 @@ Los valores de la tabla "Medidos, todavía no bloqueantes" de `CONSTRAINTS.md`. 
 | ------------------------------------------ | ------ | ---------- | ---- | ------------------------------------------------------------ |
 | Cobertura de líneas de `apps/web` (Vitest) | 11.1 % | 2026-11-11 | M8   | `pnpm coverage` (la UI se cubre sobre todo con E2E, ADR-004) |
 | Cobertura de líneas de `apps/server`       | 94.4 % | 2026-11-11 | M8   | `pnpm coverage`                                              |
-| Bundle inicial (JS + CSS, gzip)            | 162 KB | 2026-11-11 | M8   | `pnpm build` + `pnpm size` (entrada "Initial")               |
-| Todo el JS + CSS, chunks lazy incluidos    | 210 KB | 2026-11-11 | M8   | `pnpm size` (entrada "All")                                  |
+| Bundle inicial (JS + CSS, gzip)            | 164 KB | 2026-11-11 | M9   | `pnpm build` + `pnpm size` (entrada "Initial")               |
+| Todo el JS + CSS, chunks lazy incluidos    | 214 KB | 2026-11-11 | M9   | `pnpm size` (entrada "All")                                  |
 
 **Por qué creció el bundle inicial (+17 KB sobre M4, CONSTRAINTS pide explicar más de 5 KB):** el núcleo de Motion para las filas del lobby (`m`, `LayoutGroup`, `MotionConfig`, `LazyMotion`; sus features, 33 KB, ya van aparte), el motor de audio sintetizado de M6 y los efectos de pantalla de M5. Antes de pasar Motion a `LazyMotion` eran 184 KB. Hasta M5 `size-limit` sumaba también los chunks lazy bajo el nombre "Initial"; ahora hay dos entradas y las dos tienen que quedar bajo 250 KB.
 

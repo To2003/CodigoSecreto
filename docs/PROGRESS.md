@@ -15,7 +15,7 @@ Se actualiza al cerrar cada hito. Detalle de cada plan en `docs/plans/M{n}.md`, 
 | M6 Sonido                           | ✅ cerrado                                  | Efectos y dos músicas sintetizados con Web Audio (sin archivos, ADR-025), canales con volumen persistido, desbloqueo en el primer gesto, título que parpadea con la pestaña de fondo. iOS Safari queda para probar a mano. Lista de assets reales en `docs/AUDIO-ASSETS.md`.                                                                                                                                                              |
 | M7 Tutorial, reglas, social         | ✅ cerrado                                  | Timers en el server (bonus de 30 s, pausa, 15 s de objeción), objeciones con votación, chat general y de equipo (quien vio el mapa no escribe), emotes, stats de fin de partida, historial que resalta cartas, tutorial de 8 pasos sobre el motor real, `/reglas` y modal, chip "¿Primera vez?", ayudas desactivables. Review: 1 crítico (un jefe reemplazado podía escribir el mapa en el chat) arreglado y cubierto en anti-filtración. |
 | M8 Deploy (preparado, sin deployar) | ✅ cerrado (falta el deploy, que hacés vos) | CI en GitHub Actions (tipos, lint, tests, E2E + axe, Lighthouse mobile, gitleaks, osv-scanner, semgrep; floor guard por commit), pantalla "Despertando a los agentes…", ErrorBoundary, límites por IP (sockets, salas por minuto, barrido de códigos), CORS por variable, `render.yaml`, `vercel.json` con CSP, `docs/DEPLOY.md`. Review: 1 crítico (los pasos asumían una rama `main` que no existe) y 5 importantes, arreglados.        |
-| M9 Extras                           | ⏳ en curso                                 | **1. Cooperativo ✅**: spec propia, motor, server, interfaz, reglas, E2E (ganar, perder, mapas por lado) y anti-filtración. Siguen: 2. modo mesa; 3. stats con Supabase (bloqueado: pide crear una cuenta); 4. mazos de la comunidad; 5. PWA.                                                                                                                                                                                             |
+| M9 Extras                           | ✅ cerrado (salvo 9.3, bloqueado)           | 1. Cooperativo (spec propia, motor, server, interfaz, anti-filtración). 2. Modo mesa. 3. Stats con Supabase: **bloqueado**, pide crear una cuenta (BLOCKERS #1). 4. Mazos de la comunidad (JSON). 5. PWA instalable.                                                                                                                                                                                                                      |
 
 ## ⚠️ Para revisar, Tomás
 
@@ -36,7 +36,7 @@ Se actualiza al cerrar cada hito. Detalle de cada plan en `docs/plans/M{n}.md`, 
 
 ## Bloqueos
 
-Ninguno.
+- **M9.3, stats persistentes con Supabase**: hace falta una cuenta y un proyecto en supabase.com, y quedó prohibido crear cuentas. Detalle y qué hace falta en `docs/BLOCKERS.md` #1. Todo lo demás de M9 no dependía de esto y está hecho.
 
 ## Decisiones tomadas (resumen; detalle en DECISIONS.md)
 
@@ -79,3 +79,5 @@ Social y tutorial (M7): abrí `/tutorial` y hacelo entero (probá una pista que 
 Deploy (M8): en tu Mint alcanza con `pnpm e2e` (ahora hace un build de producción antes); lo nuevo se prueba deployando con `docs/DEPLOY.md`.
 
 Cooperativo (M9.1): en el lobby, Configuración → Modo → Cooperativo, con 2 personas (una en cada lado). Cada uno ve su mapa con bandas de color; el que da la pista mira el suyo y el otro toca dos veces la carta para darla vuelta. Probá ganar (15 agentes) y perder con un traidor. Las reglas del modo están en `/reglas` → "Modo cooperativo".
+
+Extras (M9): **mesa**: en el lobby, "Abrir pantalla de mesa" (abrila en otra compu o en la tele) y jugá desde los celus. **Mazos**: Configuración → "Exportar palabras (archivo)" y después "Importar mazo (archivo)" en otra sala. **PWA**: con `pnpm --filter @clave/web build && pnpm --filter @clave/web preview` (y `VITE_SERVER_URL=http://localhost:3001` para el build), Chrome muestra el ícono de instalar en la barra de direcciones.
