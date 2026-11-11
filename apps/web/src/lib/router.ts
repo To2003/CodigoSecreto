@@ -7,6 +7,10 @@ export type Route =
   | { name: 'table'; code: string }
   | { name: 'rules' }
   | { name: 'tutorial' }
+  /** Optional accounts (docs/specs/M9-cuentas.md). */
+  | { name: 'account' }
+  | { name: 'ranking' }
+  | { name: 'privacy' }
   | { name: 'notFound' };
 
 /** "/", "/sala/:code" (SPEC §2.3), "/reglas" and "/tutorial" (SPEC §8). The History API is enough. */
@@ -14,6 +18,9 @@ export function parseRoute(pathname: string): Route {
   if (pathname === '/' || pathname === '') return { name: 'home' };
   if (/^\/reglas\/?$/u.test(pathname)) return { name: 'rules' };
   if (/^\/tutorial\/?$/u.test(pathname)) return { name: 'tutorial' };
+  if (/^\/cuenta\/?$/u.test(pathname)) return { name: 'account' };
+  if (/^\/ranking\/?$/u.test(pathname)) return { name: 'ranking' };
+  if (/^\/privacidad\/?$/u.test(pathname)) return { name: 'privacy' };
   const table = /^\/sala\/([A-Za-z]{4})\/mesa\/?$/u.exec(pathname);
   if (table?.[1]) return { name: 'table', code: table[1].toUpperCase() };
   const room = /^\/sala\/([A-Za-z]{4})\/?$/u.exec(pathname);

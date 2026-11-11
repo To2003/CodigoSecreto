@@ -1,6 +1,7 @@
 import type { ClueRejection } from '../engine/clue';
 import type { CoopEvent } from '../engine/coop';
 import type { EngineErrorCode, GameEvent, PlayerTeam, Role, Team } from '../engine/types';
+import type { LikesView } from './accounts';
 import type { CoopView, GameView } from './game';
 import type { AvatarColor, ClientEventName, ClientPayload, EmoteId } from '../schemas/events';
 import type { Settings } from '../schemas/settings';
@@ -43,6 +44,8 @@ export interface RoomView {
   chatMuted: boolean;
   /** True while this player may not send emotes: a spymaster whose team is guessing (ADR-032). */
   emotesMuted: boolean;
+  /** End of a classic game, for players who were in it: this viewer's likes (spec §5). */
+  likes: LikesView | null;
   /** Present from the start of a game until the room goes back to the lobby. */
   game: GameView | null;
   /** The cooperative game (M9.1), when the room plays that mode; `game` is null then. */
@@ -92,6 +95,9 @@ export type ErrorCode =
   | 'CHAT_NOT_ALLOWED'
   | 'JOIN_LIMITED'
   | 'EMOTE_NOT_NOW'
+  | 'LIKES_NOT_NOW'
+  | 'LIKE_NOT_ALLOWED'
+  | 'ALREADY_LIKED'
   | EngineErrorCode;
 
 export interface ErrorPayload {
@@ -141,4 +147,6 @@ export interface ServerToClientEvents {
   /** The recent lines this player may read, sent on (re)joining. */
   'chat:history': (messages: ChatMessage[]) => void;
   emote: (emote: EmoteEvent) => void;
+  /** Only to the receiver: how many likes they got in this game. Nothing about who. */
+  'likes:received': (likes: { count: number }) => void;
 }

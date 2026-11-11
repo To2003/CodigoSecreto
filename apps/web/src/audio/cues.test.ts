@@ -29,6 +29,7 @@ function view(youId: string, phase?: GameView['phase']): RoomView {
     startBlockers: [],
     chatMuted: false,
     emotesMuted: false,
+    likes: null,
     coop: null,
     game: phase
       ? {

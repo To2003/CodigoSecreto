@@ -11,12 +11,15 @@ interface SocialState {
   emotes: FloatingEmote[];
   /** Cards highlighted from the clue history (SPEC §9). */
   highlight: string[];
+  /** Likes received in the game that just ended, from likes:received (spec cuentas §5). */
+  likesReceived: number;
 }
 
 export const useSocial = create<SocialState>()(() => ({
   messages: [],
   emotes: [],
   highlight: [],
+  likesReceived: 0,
 }));
 
 /** Lines kept on the client, same as the server's history. */
@@ -28,7 +31,7 @@ let emoteKey = 0;
 
 export const social = {
   reset() {
-    useSocial.setState({ messages: [], emotes: [], highlight: [] });
+    useSocial.setState({ messages: [], emotes: [], highlight: [], likesReceived: 0 });
   },
   history(messages: ChatMessage[]) {
     useSocial.setState({ messages: messages.slice(-KEEP) });
@@ -49,6 +52,12 @@ export const social = {
     useSocial.setState((s) => ({
       highlight: s.highlight.join() === cardIds.join() ? [] : cardIds,
     }));
+  },
+  likes(count: number) {
+    useSocial.setState((s) => ({ likesReceived: Math.max(s.likesReceived, count) }));
+  },
+  clearLikes() {
+    useSocial.setState({ likesReceived: 0 });
   },
   clearHighlight() {
     useSocial.setState({ highlight: [] });

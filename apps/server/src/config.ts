@@ -7,6 +7,11 @@ export interface ServerConfig {
   trustProxyHops: number;
   /** Rooms one IP may create per minute (BACKLOG #4). */
   roomsPerMinute: number;
+  /** Accounts (docs/specs/M9-cuentas.md §7): off, in memory (dev/E2E) or Supabase. */
+  auth:
+    { mode: 'off' } | { mode: 'memory' } | { mode: 'supabase'; url: string; serviceKey: string };
+  /** Stats count games at least this long. */
+  statsMinGameMs: number;
 }
 
 export type ConfigResult = { ok: true; config: ServerConfig } | { ok: false; error: string };
@@ -57,6 +62,40 @@ export function parseConfig(env: Record<string, string | undefined>): ConfigResu
     return { ok: false, error: `ROOMS_PER_MINUTE must be a positive integer, got "${roomsRaw}"` };
   }
 
+  const minRaw = env.STATS_MIN_GAME_SECONDS ?? '300';
+  if (!/^\d+$/.test(minRaw)) {
+    return { ok: false, error: `STATS_MIN_GAME_SECONDS must be a whole number, got "${minRaw}"` };
+  }
+
+  // Never echo SUPABASE_SERVICE_ROLE_KEY back in an error: only say whether it's there.
+  const mode = env.AUTH_MODE ?? 'off';
+  let auth: ServerConfig['auth'];
+  if (mode === 'off') auth = { mode: 'off' };
+  else if (mode === 'memory') {
+    if (env.NODE_ENV === 'production') {
+      return {
+        ok: false,
+        error: 'AUTH_MODE=memory is for development only, not with NODE_ENV=production',
+      };
+    }
+    auth = { mode: 'memory' };
+  } else if (mode === 'supabase') {
+    const url = env.SUPABASE_URL?.trim() ?? '';
+    const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? '';
+    if (!/^https:\/\/[^/]+$/.test(url.replace(/\/+$/, ''))) {
+      return {
+        ok: false,
+        error: 'AUTH_MODE=supabase needs SUPABASE_URL (https://<project>.supabase.co)',
+      };
+    }
+    if (serviceKey === '') {
+      return { ok: false, error: 'AUTH_MODE=supabase needs SUPABASE_SERVICE_ROLE_KEY (not set)' };
+    }
+    auth = { mode: 'supabase', url, serviceKey };
+  } else {
+    return { ok: false, error: `AUTH_MODE must be off, memory or supabase, got "${mode}"` };
+  }
+
   return {
     ok: true,
     config: {
@@ -65,6 +104,8 @@ export function parseConfig(env: Record<string, string | undefined>): ConfigResu
       logLevel: env.LOG_LEVEL ?? 'info',
       trustProxyHops,
       roomsPerMinute,
+      auth,
+      statsMinGameMs: Number(minRaw) * 1000,
     },
   };
 }

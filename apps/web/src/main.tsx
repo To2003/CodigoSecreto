@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './net/client';
 import { wakeServer } from './net/health';
+import { sessionToken } from './net/auth';
 import { socket } from './net/socket';
 import { App } from './App';
 import { audio } from './audio/engine';
@@ -41,6 +42,13 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   });
 }
 bindConnection(socket);
+// Signed in? Each (re)connection carries the current session token; guests send nothing
+// and never load the accounts code (docs/specs/M9-cuentas.md §2).
+socket.auth = (cb) => {
+  void sessionToken().then((token) => {
+    cb(token ? { token } : {});
+  });
+};
 // Wake a sleeping server as early as possible (SPEC §0.4), alongside the socket.
 wakeServer();
 socket.connect();

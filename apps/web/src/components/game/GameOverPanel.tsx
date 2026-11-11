@@ -2,6 +2,7 @@ import { gameStats, TEAMS, type GameView, type RoomView, type Team } from '@clav
 import { useId } from 'react';
 import { t } from '../../i18n/es-AR';
 import { backToLobby, rematch } from '../../net/client';
+import { Likes } from './Likes';
 
 /** SPEC §3.1 "Fin de partida": who won, the full map (already on the board), and what's next. */
 export function GameOverPanel({
@@ -29,6 +30,7 @@ export function GameOverPanel({
         {t.game.scoreboard(view.scoreboard.red, view.scoreboard.blue)}
       </p>
       {view.game && <Stats game={view.game} teamName={teamName} />}
+      <Likes view={view} />
       {isHost ? (
         <div className="flex flex-wrap gap-2">
           <button

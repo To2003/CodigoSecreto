@@ -11,6 +11,8 @@ describe('parseConfig', () => {
         logLevel: 'info',
         trustProxyHops: 0,
         roomsPerMinute: 10,
+        auth: { mode: 'off' },
+        statsMinGameMs: 300_000,
       },
     });
   });
@@ -35,7 +37,39 @@ describe('parseConfig', () => {
     ['proxy hops not a number', { TRUST_PROXY_HOPS: 'yes' }],
     ['too many proxy hops', { TRUST_PROXY_HOPS: '9' }],
     ['rooms per minute zero', { ROOMS_PER_MINUTE: '0' }],
+    ['unknown auth mode', { AUTH_MODE: 'google' }],
+    ['memory auth in production', { AUTH_MODE: 'memory', NODE_ENV: 'production' }],
+    ['supabase without url', { AUTH_MODE: 'supabase', SUPABASE_SERVICE_ROLE_KEY: 'k' }],
+    ['supabase without key', { AUTH_MODE: 'supabase', SUPABASE_URL: 'https://x.supabase.co' }],
+    ['bad stats minimum', { STATS_MIN_GAME_SECONDS: '5m' }],
   ])('rejects %s', (_label, env) => {
     expect(parseConfig(env)).toMatchObject({ ok: false });
+  });
+
+  it('reads the accounts settings and never puts the service key in an error', () => {
+    expect(
+      parseConfig({
+        AUTH_MODE: 'supabase',
+        SUPABASE_URL: 'https://abcd.supabase.co/',
+        SUPABASE_SERVICE_ROLE_KEY: 'secret-key',
+        STATS_MIN_GAME_SECONDS: '0',
+      }),
+    ).toMatchObject({
+      ok: true,
+      config: {
+        auth: { mode: 'supabase', url: 'https://abcd.supabase.co/', serviceKey: 'secret-key' },
+        statsMinGameMs: 0,
+      },
+    });
+    expect(parseConfig({ AUTH_MODE: 'memory' })).toMatchObject({
+      ok: true,
+      config: { auth: { mode: 'memory' } },
+    });
+    const bad = parseConfig({
+      AUTH_MODE: 'supabase',
+      SUPABASE_URL: 'http://x',
+      SUPABASE_SERVICE_ROLE_KEY: 'secret-key',
+    });
+    expect(JSON.stringify(bad)).not.toContain('secret-key');
   });
 });

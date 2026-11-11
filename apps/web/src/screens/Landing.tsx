@@ -7,7 +7,13 @@ import { t } from '../i18n/es-AR';
 import { navigate, roomPath } from '../lib/router';
 import { createRoom } from '../net/client';
 
-const LEARN = ['/tutorial', '/reglas'] as const;
+const LEARN = ['/tutorial', '/reglas', '/ranking', '/cuenta'] as const;
+const LEARN_LABEL: Record<(typeof LEARN)[number], string> = {
+  '/tutorial': t.tutorial.landingLink,
+  '/reglas': t.tutorial.rulesLink,
+  '/ranking': t.ranking.title,
+  '/cuenta': t.accounts.landingAccount,
+};
 
 export function Landing() {
   const [code, setCode] = useState('');
@@ -45,7 +51,7 @@ export function Landing() {
                 navigate(path);
               }}
             >
-              {path === '/tutorial' ? t.tutorial.landingLink : t.tutorial.rulesLink}
+              {LEARN_LABEL[path]}
             </a>
           ))}
         </nav>

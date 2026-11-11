@@ -13,6 +13,9 @@ describe('parseRoute', () => {
     ['/tutorial/', { name: 'tutorial' }],
     ['/reglasx', { name: 'notFound' }],
     ['/sala/ktrx/mesa', { name: 'table', code: 'KTRX' }],
+    ['/cuenta', { name: 'account' }],
+    ['/ranking/', { name: 'ranking' }],
+    ['/privacidad', { name: 'privacy' }],
     ['/sala/KTRX/mesa/x', { name: 'notFound' }],
   ])('%j', (path, route) => {
     expect(parseRoute(path)).toEqual(route);

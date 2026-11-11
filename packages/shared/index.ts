@@ -11,6 +11,26 @@ export { BOARD_SIZE, chooseWords, rotateSpymasters } from './engine/setup';
 export { gameStats, type GameStats, type TeamStats } from './engine/stats';
 export { coopEmoteBlocked, emoteBlocked } from './engine/emotes';
 export {
+  applyResult,
+  EMPTY_STATS,
+  gameCountsForStats,
+  LIKES_PER_PAIR_PER_DAY,
+  likeDay,
+  RANKING_MIN_GAMES,
+  RANKING_SIZE,
+  rankByLove,
+  rankByWins,
+  resultsFor,
+  STATS_MIN_PLAYERS,
+  type BestClue,
+  type GameResult,
+  type LoveEntry,
+  type PlayerStats,
+  type RankRow,
+  type RosterEntry,
+  type WinsEntry,
+} from './engine/accountStats';
+export {
   agentsLeft,
   applyCoopAction,
   COOP_AGENTS,
@@ -42,6 +62,7 @@ export {
   MAX_CUSTOM_WORDS,
   MAX_TEAM_NAME_LENGTH,
   parseCustomWords,
+  displayNameSchema,
   settingsSchema,
   type Settings,
 } from './schemas/settings';
@@ -77,3 +98,4 @@ export {
 } from './schemas/deckFile';
 export type * from './types/game';
 export type * from './types/room';
+export type * from './types/accounts';

@@ -278,3 +278,20 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
   - Un jefe reemplazado durante una pausa (queda de espectador) y un espectador que ve el mapa tampoco mandan emotes mientras cualquier equipo adivina: vieron el mapa y no tienen equipo propio que cuidar.
   - Modo cooperativo: el lado cuyo mapa se está adivinando no manda emotes durante esa fase (es la misma seña).
 - **Tests**: unitarios del motor, de la sala (rival y agentes sí pueden; el turno siguiente lo libera; fin y lobby), por sockets (el server rechaza y nadie recibe el emote) y en el test anti-filtración (el jefe que adivina recibe `EMOTE_NOT_NOW` y ningún emote de un jefe llega a agentes ni espectadores). Verificado con mutación: sin la regla fallan 6 tests.
+
+## ADR-033 — Cuentas opcionales, estadísticas, ranking y likes
+
+- **Estado**: Aceptada (2026-11-11, pedido de Tomás; spec en `docs/specs/M9-cuentas.md`)
+- **Decisiones conservadoras sobre lo que el pedido no define** (cada una marcada **[decisión]** en la spec):
+  - Numeración: se usa "M9.4 cuentas" como pidió Tomás; cubre el viejo M9.3 (stats con Supabase).
+  - Nombre visible vacío al principio: nadie aparece en el ranking con el nombre de Google por defecto.
+  - Token inválido o vencido: se juega como invitado, no se corta la conexión.
+  - Una cuenta, un asiento por sala: un segundo asiento de la misma cuenta entra como invitado.
+  - Solo partidas clásicas, con 4 o más jugadores al empezar y al menos 5 minutos (`STATS_MIN_GAME_SECONDS`), terminadas (no cortadas con "Volver al lobby").
+  - Cuenta el rol que cada uno tenía al empezar; la pista se atribuye a quien era jefe cuando la dio; la "mejor pista" empatada no reemplaza a la anterior.
+  - Ranking: 50 primeros por lista; desempates fijos; quien no eligió nombre no aparece.
+  - Likes: solo al final de una partida clásica; un like en total por jugador por partida; se guardan solo si la partida cuenta para estadísticas; tope de 3 por día por par dador→receptor, con todos los invitados como un mismo dador; filas de likes borradas a los 2 días.
+  - El cliente lee ranking y perfil a través del server (misma interfaz de repositorio); RLS igual permite solo esas lecturas, como defensa en profundidad.
+  - `AUTH_MODE=memory` (login de prueba) se niega a arrancar con `NODE_ENV=production`.
+- **Por qué un repositorio con dos implementaciones**: este contenedor no llega a Supabase. Los tests corren contra la implementación en memoria y contra la de Supabase con un `fetch` falso (se verifican las URLs, los headers y que la clave no aparezca en ningún log).
+- **Al implementar**: (1) la web usa solo `@supabase/auth-js` (no todo `supabase-js`), en un chunk aparte de 23 KB que carga únicamente quien entra o ya tiene sesión: así el total de JS con los chunks lazy queda bajo el límite de 250 KB que nos pusimos (con `supabase-js` completo daba 275 KB). (2) El API de cuentas tiene su propio límite por dirección: 60 de golpe y 2 por segundo. (3) En `render.yaml`, `AUTH_MODE` y las claves de Supabase van con `sync: false`: se cargan a mano en el dashboard y un sync del Blueprint nunca las pisa; sin `AUTH_MODE`, el server arranca sin cuentas. (4) Supabase pausa los proyectos Free tras una semana sin uso: un workflow lee el ranking cada 3 días con la clave pública (`.github/workflows/supabase-keepalive.yml`).

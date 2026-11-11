@@ -19,10 +19,13 @@ import { eventsFor } from '../views/gameView';
 import { cryptoRng } from '../rooms/rng';
 import type { IpLimiter } from './ipLimits';
 import { TokenBucket } from './rateLimit';
+import type { Accounts } from '../accounts/service';
 
 interface SocketData {
   roomCode?: string;
   playerId?: string;
+  /** The verified account behind this socket, set once at connection (never sent anywhere). */
+  userId?: string;
 }
 export type IoServer = Server<ClientToServerEvents, ServerToClientEvents, object, SocketData>;
 type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, object, SocketData>;
@@ -33,6 +36,9 @@ export interface LobbyContext {
   log: Logger;
   now: () => number;
   limiter: IpLimiter;
+  accounts: Accounts;
+  /** Sends a room's patch to everyone in it, and saves a game's results once it's over. */
+  publish: (room: Room, events: RoomEvent[]) => void;
   /** This socket's limit key (see clientIp), null when unknown. Never logged: personal data. */
   ip: string | null;
 }
@@ -59,7 +65,9 @@ export function broadcast(io: IoServer, room: Room, events: RoomEvent[]) {
 const openSockets = new Map<string, Set<string>>();
 
 export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
-  const { io, store, log, now, limiter, ip } = ctx;
+  const { io, store, log, now, limiter, ip, accounts, publish } = ctx;
+  // Read once: attach() replaces socket.data with the seat it binds to.
+  const userId = socket.data.userId;
   const bucket = new TokenBucket(20, 20, now);
 
   const on = <E extends ClientEventName>(
@@ -133,7 +141,7 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
     const room = store.get(roomCode);
     if (!markDisconnected || !room?.players.some((p) => p.id === playerId)) return;
     const events = room.setConnected(playerId, false, now());
-    if (events.length > 0) broadcast(io, room, events);
+    if (events.length > 0) publish(room, events);
   };
 
   const newSeat = () => ({ id: randomUUID(), token: randomBytes(24).toString('base64url') });
@@ -143,7 +151,7 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
     limiter.count(ip, 'rooms');
     detach(true);
     const room = store.create(now());
-    const { player } = room.join(profile, now(), newSeat());
+    const { player } = room.join(profile, now(), newSeat(), userId);
     attach(room, player.id);
     log.info('room created', { roomCode: room.code });
     return { roomCode: room.code, playerId: player.id, token: player.token };
@@ -168,8 +176,8 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
 
     if (ownSeat) {
       try {
-        const { player, events } = room.rejoin(playerId, token, now());
-        if (events.length > 0) broadcast(io, room, events);
+        const { player, events } = room.rejoin(playerId, token, now(), userId);
+        if (events.length > 0) publish(room, events);
         attach(room, player.id);
         return { roomCode, playerId: player.id, token: player.token };
       } catch (err) {
@@ -178,8 +186,8 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
         if (!limiter.allows(ip, 'failedJoins')) throw new RoomError('JOIN_LIMITED');
       }
     }
-    const { player, events } = room.join(profile, now(), newSeat());
-    broadcast(io, room, events);
+    const { player, events } = room.join(profile, now(), newSeat(), userId);
+    publish(room, events);
     attach(room, player.id);
     return { roomCode, playerId: player.id, token: player.token };
   });
@@ -188,31 +196,31 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
     const { room, playerId } = current();
     detach(false);
     const events = room.leave(playerId, now());
-    broadcast(io, room, events);
+    publish(room, events);
     return undefined;
   });
 
   on('lobby:setTeam', ({ team }) => {
     const { room, playerId } = current();
-    broadcast(io, room, room.setTeam(playerId, team));
+    publish(room, room.setTeam(playerId, team));
     return undefined;
   });
 
   on('lobby:setRole', ({ role }) => {
     const { room, playerId } = current();
-    broadcast(io, room, room.setRole(playerId, role));
+    publish(room, room.setRole(playerId, role));
     return undefined;
   });
 
   on('lobby:randomize', () => {
     const { room, playerId } = current();
-    broadcast(io, room, room.randomize(playerId, seed()));
+    publish(room, room.randomize(playerId, seed()));
     return undefined;
   });
 
   on('lobby:updateSettings', ({ settings }) => {
     const { room, playerId } = current();
-    broadcast(io, room, room.updateSettings(playerId, settings));
+    publish(room, room.updateSettings(playerId, settings));
     return undefined;
   });
 
@@ -223,7 +231,7 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
     io.to(key).emit('room:kicked');
     io.in(key).socketsLeave(key);
     openSockets.delete(key);
-    broadcast(io, room, events);
+    publish(room, events);
     return undefined;
   });
 
@@ -231,12 +239,12 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
   const seed = () => cryptoRng;
   const game = (build: (playerId: string) => PlayerAction) => {
     const { room, playerId } = current();
-    broadcast(io, room, room.act(playerId, build(playerId)));
+    publish(room, room.act(playerId, build(playerId)));
   };
 
   on('game:start', () => {
     const { room, playerId } = current();
-    broadcast(io, room, room.start(playerId, seed()));
+    publish(room, room.start(playerId, seed()));
     return undefined;
   });
   on('game:clue', ({ word, count }) => {
@@ -271,6 +279,17 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
     for (const id of recipients) io.to(channel(room.code, id)).emit('chat:message', message);
     return undefined;
   });
+  // Likes (docs/specs/M9-cuentas.md §5): only the receiver hears about it, and only a count.
+  on('like:give', ({ playerId: target }) => {
+    const { room, playerId } = current();
+    const outcome = room.like(playerId, target);
+    io.to(channel(room.code, outcome.receiverId)).emit('likes:received', {
+      count: outcome.received,
+    });
+    if (outcome.keep) accounts.keepLike(outcome.keep);
+    return undefined;
+  });
+
   on('emote:send', ({ emoteId }) => {
     const { room, playerId } = current();
     const emote = room.emote(playerId, emoteId);
@@ -280,17 +299,17 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
 
   on('game:setSpymaster', ({ playerId: target }) => {
     const { room, playerId } = current();
-    broadcast(io, room, room.setSpymaster(playerId, target));
+    publish(room, room.setSpymaster(playerId, target));
     return undefined;
   });
   on('game:rematch', ({ keepSpymasters }) => {
     const { room, playerId } = current();
-    broadcast(io, room, room.rematch(playerId, keepSpymasters));
+    publish(room, room.rematch(playerId, keepSpymasters));
     return undefined;
   });
   on('game:backToLobby', () => {
     const { room, playerId } = current();
-    broadcast(io, room, room.backToLobby(playerId));
+    publish(room, room.backToLobby(playerId));
     return undefined;
   });
 

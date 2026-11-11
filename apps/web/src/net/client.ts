@@ -117,6 +117,7 @@ export const voteObjection = (accept: boolean) => request('game:vote', { accept 
 export const sendChat = (text: string, scope: 'all' | 'team') =>
   request('chat:send', { text, scope });
 export const sendEmote = (emoteId: EmoteId) => request('emote:send', { emoteId });
+export const giveLike = (playerId: string) => request('like:give', { playerId });
 
 /** Re-sends room:join with the stored seat: answers with a full room:state. */
 let resyncing = false;
@@ -137,9 +138,11 @@ socket.on('room:state', ({ seq, view }) => {
 
 socket.on('room:patch', (patch) => {
   const action = patchAction(useRoom.getState().seq, patch.seq);
-  if (action === 'apply')
+  if (action === 'apply') {
+    // A new game (or the lobby) starts the like count over.
+    if (patch.view.likes === null) social.clearLikes();
     useRoom.setState({ view: patch.view, seq: patch.seq, lastEvents: patch.events });
-  else if (action === 'resync') resync();
+  } else if (action === 'resync') resync();
 });
 
 socket.on('room:kicked', () => {
@@ -158,6 +161,9 @@ socket.on('chat:history', (messages) => {
 });
 socket.on('chat:message', (message) => {
   social.message(message);
+});
+socket.on('likes:received', ({ count }) => {
+  social.likes(count);
 });
 socket.on('emote', (emote) => {
   social.emote(emote);

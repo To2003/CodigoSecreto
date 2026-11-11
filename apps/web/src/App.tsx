@@ -13,6 +13,9 @@ import { useReducedMotion } from './store/prefs';
 const Rules = lazy(() => import('./screens/Rules'));
 const Tutorial = lazy(() => import('./screens/Tutorial'));
 const Table = lazy(() => import('./screens/Table'));
+const Account = lazy(() => import('./screens/Account'));
+const Ranking = lazy(() => import('./screens/Ranking'));
+const Privacy = lazy(() => import('./screens/Privacy'));
 
 // Motion's features stay out of the initial bundle: the lobby rows animate once they arrive.
 const loadMotionFeatures = () => import('./animations/motionFeatures').then((m) => m.default);
@@ -57,6 +60,17 @@ function Screen() {
           <WakeScreen onRetry={wakeServer} />
         </>
       );
+    case 'account':
+    case 'ranking':
+    case 'privacy': {
+      const Page =
+        route.name === 'account' ? Account : route.name === 'ranking' ? Ranking : Privacy;
+      return (
+        <Suspense fallback={null}>
+          <Page />
+        </Suspense>
+      );
+    }
     case 'rules':
       return (
         <Suspense fallback={null}>
