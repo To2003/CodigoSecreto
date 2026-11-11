@@ -11,6 +11,12 @@ import {
   type IpLimitOptions,
 } from './handlers/ipLimits';
 import { broadcast, registerLobbyHandlers, type IoServer } from './handlers/lobby';
+import { accountsRouter } from './accounts/http';
+import { MemoryAccountsRepo } from './accounts/memoryRepo';
+import type { AccountsRepo } from './accounts/repo';
+import { Accounts } from './accounts/service';
+import type { Room } from './rooms/room';
+import type { RoomEvent } from '@clave/shared';
 import type { Logger } from './log';
 import { RoomStore } from './rooms/store';
 
@@ -31,6 +37,10 @@ export interface ServerOptions {
   trustProxyHops?: number;
   /** Per-IP limits; tests lower them. */
   ipLimits?: Partial<IpLimitOptions>;
+  /** Accounts storage (docs/specs/M9-cuentas.md); null or absent: accounts off, all guests. */
+  accountsRepo?: AccountsRepo | null;
+  /** Stats count games at least this long (default 5 minutes). */
+  statsMinGameMs?: number;
 }
 
 export interface ClaveServer {
@@ -57,6 +67,8 @@ export function createServer({
   now = steadyNow,
   trustProxyHops = 0,
   ipLimits = {},
+  accountsRepo = null,
+  statsMinGameMs,
 }: ServerOptions): ClaveServer {
   const isAllowed = (origin: string | undefined) =>
     origin !== undefined && clientOrigins.includes(origin);
@@ -68,6 +80,18 @@ export function createServer({
       origin: (origin, callback) => {
         callback(null, isAllowed(origin));
       },
+    }),
+  );
+
+  const accounts = new Accounts(accountsRepo, log, now);
+  app.use(
+    '/api',
+    accountsRouter({
+      accounts,
+      memory: accountsRepo instanceof MemoryAccountsRepo ? accountsRepo : null,
+      log,
+      now,
+      addressOf: (req) => clientIp(req.socket.remoteAddress ?? '', req.headers, trustProxyHops),
     }),
   );
 
@@ -93,7 +117,13 @@ export function createServer({
     },
   });
 
-  const store = new RoomStore(undefined, now);
+  const store = new RoomStore(undefined, now, statsMinGameMs);
+  /** Every room change goes out through here; a game that just ended gets its results saved. */
+  const publish = (room: Room, events: RoomEvent[]) => {
+    broadcast(io, room, events);
+    const finished = room.takeFinishedGame();
+    if (finished) accounts.saveFinished(finished);
+  };
   const limiter = new IpLimiter({ ...DEFAULT_IP_LIMITS, ...ipLimits }, now);
 
   // Too many sockets from one IP: refused before any handler runs (BACKLOG #4).
@@ -118,10 +148,19 @@ export function createServer({
     next();
   });
 
+  // Signed in? The session token is checked once, here; a bad one just means "guest".
+  io.use((socket, next) => {
+    const token = (socket.handshake.auth as { token?: unknown } | undefined)?.token;
+    void accounts.identify(token).then((userId) => {
+      if (userId) socket.data.userId = userId;
+      next();
+    });
+  });
+
   io.on('connection', (socket) => {
     log.info('socket connected', { socketId: socket.id });
     const ip = clientIp(socket.handshake.address, socket.handshake.headers, trustProxyHops);
-    registerLobbyHandlers({ io, store, log, now, limiter, ip }, socket);
+    registerLobbyHandlers({ io, store, log, now, limiter, ip, accounts, publish }, socket);
     socket.on('disconnect', (reason) => {
       log.info('socket disconnected', { socketId: socket.id, reason });
     });
@@ -129,7 +168,7 @@ export function createServer({
 
   const sweep = () => {
     limiter.prune();
-    for (const { room, events } of store.sweep(now())) broadcast(io, room, events);
+    for (const { room, events } of store.sweep(now())) publish(room, events);
   };
   const sweeper = setInterval(sweep, SWEEP_INTERVAL_MS);
   sweeper.unref();
@@ -137,7 +176,7 @@ export function createServer({
     const due = store.tick((room, err) => {
       log.error('timer tick failed', { roomCode: room.code, err });
     });
-    for (const { room, events } of due) broadcast(io, room, events);
+    for (const { room, events } of due) publish(room, events);
   };
   const ticker = setInterval(tick, TICK_INTERVAL_MS);
   ticker.unref();

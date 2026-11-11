@@ -13,6 +13,8 @@ export class RoomStore {
     private readonly newCode = generateRoomCode,
     /** The server clock, handed to every room for its timers. */
     private readonly clock: () => number = Date.now,
+    /** Stats count games at least this long (STATS_MIN_GAME_SECONDS). */
+    private readonly statsMinGameMs?: number,
   ) {}
 
   get size() {
@@ -24,6 +26,7 @@ export class RoomStore {
       this.newCode((code) => this.rooms.has(code)),
       now,
       this.clock,
+      this.statsMinGameMs,
     );
     this.rooms.set(room.code, room);
     return room;

@@ -8,6 +8,7 @@ import type {
 } from '@clave/shared';
 import { io as connect, type Socket } from 'socket.io-client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { MemoryAccountsRepo } from '../accounts/memoryRepo';
 import { createServer, type ClaveServer } from '../app';
 
 /**
@@ -35,8 +36,10 @@ async function join(
   name: string,
   roomCode?: string,
   seat?: { playerId: string; token: string },
+  sessionToken?: string,
 ): Promise<Player & { token: string }> {
   const socket: Client = connect(url, {
+    ...(sessionToken ? { auth: { token: sessionToken } } : {}),
     transports: ['websocket'],
     extraHeaders: { origin: ORIGIN },
   });
@@ -95,8 +98,16 @@ function hiddenCards(payload: unknown): PublicCard[] | null {
   return view?.game?.cards.filter((c) => !c.revealed) ?? null;
 }
 
+// Accounts on (in memory, every game counts), so the likes scenario runs against the real flow.
+const accountsRepo = new MemoryAccountsRepo();
+
 beforeAll(async () => {
-  server = createServer({ clientOrigins: [ORIGIN], log: silent });
+  server = createServer({
+    clientOrigins: [ORIGIN],
+    log: silent,
+    accountsRepo,
+    statsMinGameMs: 0,
+  });
   await new Promise<void>((resolve) => server.httpServer.listen(0, '127.0.0.1', resolve));
   url = `http://127.0.0.1:${(server.httpServer.address() as AddressInfo).port}`;
 });
@@ -464,6 +475,67 @@ describe('anti-leak (SPEC §2.1)', () => {
     }
     for (const v of coopViews(eli)) {
       expect(v.cards.every((c) => c.key === undefined && c.keys === undefined)).toBe(true);
+    }
+  });
+
+  /**
+   * Likes (docs/specs/M9-cuentas.md §5): refused during the game (they'd be a signal), and once
+   * it's over they reach only the receiver as a bare count. No likes payload carries anything of
+   * the game, nor who gave it, nor an account id or session token.
+   */
+  it('likes: never during the game, and only a bare count to the receiver after it', async () => {
+    const anaSession = accountsRepo.devLogin('Ana-likes');
+    const betoSession = accountsRepo.devLogin('Beto-likes');
+    const ana = await join('Ana', undefined, undefined, anaSession.token);
+    const code = ana.view()?.code ?? '';
+    const beto = await join('Beto', code, undefined, betoSession.token);
+    const caro = await join('Caro', code);
+    const dani = await join('Dani', code);
+    await ana.socket.emitWithAck('lobby:setRole', { role: 'spymaster' });
+    await beto.socket.emitWithAck('lobby:setRole', { role: 'spymaster' });
+    await ana.socket.emitWithAck('game:start', {});
+    await settle();
+    const phase = ana.view()?.game?.phase;
+    if (!phase || phase.name === 'over') throw new Error('setup');
+    const [sm, agent, rival] = phase.team === 'red' ? [ana, caro, beto] : [beto, dani, ana];
+    await sm.socket.emitWithAck('game:clue', { word: 'QXZ', count: 'inf' });
+    await settle();
+    // Mid-game: an agent trying to "like" the spymaster (a yes/no signal) is refused.
+    for (const target of [sm, rival]) {
+      const refused = await agent.socket.emitWithAck('like:give', { playerId: target.id });
+      expect(refused).toMatchObject({ ok: false, error: { code: 'LIKES_NOT_NOW' } });
+    }
+    const traitor = sm.view()?.game?.cards.find((c) => c.type === 'traitor');
+    await agent.socket.emitWithAck('game:reveal', { cardId: traitor?.id ?? '' });
+    await settle();
+    expect(ana.view()?.status).toBe('over');
+    for (const giver of [agent, rival]) {
+      expect(await giver.socket.emitWithAck('like:give', { playerId: sm.id })).toEqual({
+        ok: true,
+      });
+    }
+    await settle();
+
+    const everyone = [ana, beto, caro, dani];
+    const likes = (p: Player) =>
+      p.payloads.filter(
+        (x): x is Record<string, unknown> =>
+          typeof x === 'object' && x !== null && 'count' in x && !('view' in x),
+      );
+    // Only the receiver got anything, and only { count }.
+    expect(likes(sm)).toEqual([{ count: 1 }, { count: 2 }]);
+    for (const p of everyone.filter((x) => x !== sm)) expect(likes(p), p.name).toEqual([]);
+    // No payload, to anyone, ever carried an account id or a session token.
+    for (const p of everyone) {
+      const all = JSON.stringify(p.payloads);
+      for (const secret of [
+        anaSession.userId,
+        betoSession.userId,
+        anaSession.token,
+        betoSession.token,
+      ]) {
+        expect(all, p.name).not.toContain(secret);
+      }
     }
   });
 });
