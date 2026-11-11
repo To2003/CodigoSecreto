@@ -88,3 +88,18 @@ test('rules, tutorial and the in-game rules modal have no serious violations', a
   await game.caro.page.getByRole('button', { name: 'Reglas' }).click();
   await expectAccessible(game.caro.page, 'rules modal');
 });
+
+test('account, ranking and privacy pages have no serious violations', async ({ browser }) => {
+  const { page } = await newPlayer(browser, 'Ana');
+  for (const path of ['/cuenta', '/ranking', '/privacidad']) {
+    await page.goto(path);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expectAccessible(page, path);
+  }
+  // Signed in: the name form and the stats.
+  await page.goto('/cuenta');
+  await page.getByLabel('Nombre de prueba').fill('Ana');
+  await page.getByRole('button', { name: 'Entrar (modo prueba)' }).click();
+  await expect(page.getByTestId('account-stats')).toBeVisible();
+  await expectAccessible(page, '/cuenta signed in');
+});

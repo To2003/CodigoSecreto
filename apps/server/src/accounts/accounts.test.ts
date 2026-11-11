@@ -219,3 +219,13 @@ describe('stats and likes over sockets', () => {
     expect(((await api('/ranking')).body as RankingView).wins[0]?.me).toBe(false);
   });
 });
+
+describe('accounts API rate limit', () => {
+  it('answers 429 past the burst from one address', async () => {
+    await start(new MemoryAccountsRepo());
+    const statuses: number[] = [];
+    for (let i = 0; i < 70; i++) statuses.push((await api('/ranking')).status);
+    expect(statuses.slice(0, 55).every((s) => s === 200)).toBe(true);
+    expect(statuses.at(-1)).toBe(429);
+  });
+});

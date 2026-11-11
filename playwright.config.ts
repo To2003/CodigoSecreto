@@ -21,7 +21,14 @@ export default defineConfig({
       url: 'http://localhost:3001/health',
       reuseExistingServer: !CI,
       // Every test player comes from 127.0.0.1 and the suite creates dozens of rooms a minute.
-      env: { CLIENT_ORIGIN: 'http://localhost:5173', LOG_LEVEL: 'warn', ROOMS_PER_MINUTE: '1000' },
+      // Accounts in memory (test sign-in) and every game counting, for the accounts E2E.
+      env: {
+        CLIENT_ORIGIN: 'http://localhost:5173',
+        LOG_LEVEL: 'warn',
+        ROOMS_PER_MINUTE: '1000',
+        AUTH_MODE: 'memory',
+        STATS_MIN_GAME_SECONDS: '0',
+      },
     },
     {
       // The production build, as it ships (ADR-026): dev React re-renders twice and adds checks,
@@ -31,7 +38,7 @@ export default defineConfig({
       url: 'http://localhost:5173',
       reuseExistingServer: !CI,
       timeout: 120_000,
-      env: { VITE_SERVER_URL: 'http://localhost:3001' },
+      env: { VITE_SERVER_URL: 'http://localhost:3001', VITE_AUTH_MODE: 'memory' },
     },
   ],
 });

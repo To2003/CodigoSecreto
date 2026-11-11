@@ -11,9 +11,12 @@ import type { Logger } from '../log';
 import type { MemoryAccountsRepo } from './memoryRepo';
 import type { Accounts } from './service';
 
-/** Per-address limit for the accounts API: 20 at once, then one every 2 s. */
-const API_BURST = 20;
-const API_PER_SECOND = 0.5;
+/**
+ * Per-address limit for the accounts API: 60 at once, then 2 per second. A page makes one or two
+ * calls; the margin is for many players behind one address (a school, a phone carrier).
+ */
+const API_BURST = 60;
+const API_PER_SECOND = 2;
 const MAX_BUCKETS = 10_000;
 
 /**

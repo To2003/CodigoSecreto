@@ -412,6 +412,25 @@
   animation: breathe 1.6s ease-in-out infinite;
 }
 
+/* A like received: the heart pops (spec cuentas §5). */
+@keyframes like-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.anim-like {
+  animation: like-pop 600ms var(--ease-spring) both;
+}
+
 /* Game over: the rest of the key map shows up in a cascade. */
 .anim-map-in {
   animation: fade-in 300ms ease-out both;
