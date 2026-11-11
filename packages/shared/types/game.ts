@@ -1,3 +1,4 @@
+import type { CoopClue, CoopKey, CoopPhase, Side } from '../engine/coop';
 import type { CardType, ClueRecord, Phase, Team } from '../engine/types';
 
 /**
@@ -45,4 +46,28 @@ export interface GameView {
   timer: TimerView | null;
   /** How long the game lasted; set once it's over (end-of-game stats, SPEC §9). */
   durationMs: number | null;
+}
+
+/** A cooperative card as one player sees it (docs/specs/M9-cooperativo.md §6). */
+export interface CoopPublicCard {
+  id: string;
+  word: string;
+  found: boolean;
+  /** Sides whose clue turned this card up as a civilian: public once it happened. */
+  civilianFor: Side[];
+  /** What it is on the viewer's own map; absent for spectators until the end. */
+  key?: CoopKey;
+  /** Both maps, once the game is over. */
+  keys?: Record<Side, CoopKey>;
+}
+
+/** The cooperative game, already filtered for one player. */
+export interface CoopView {
+  /** The viewer's side, or null for spectators. */
+  side: Side | null;
+  cards: CoopPublicCard[];
+  phase: CoopPhase;
+  turnsLeft: number;
+  agentsLeft: number;
+  clues: CoopClue[];
 }

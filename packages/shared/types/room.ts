@@ -22,7 +22,9 @@ export type StartBlocker =
   | { code: 'NO_AGENT'; team: Team }
   | { code: 'SPYMASTER_AWAY'; team: Team }
   | { code: 'NOT_ENOUGH_WORDS' }
-  | { code: 'MODE_NOT_AVAILABLE' };
+  | { code: 'MODE_NOT_AVAILABLE' }
+  /** Cooperative: 2–3 players with both sides covered (docs/specs/M9-cooperativo.md §2). */
+  | { code: 'COOP_PLAYERS' };
 
 export type RoomStatus = 'lobby' | 'playing' | 'over';
 

@@ -9,6 +9,29 @@ export {
 export { mulberry32, pick, randomId, shuffle, type Rng } from './engine/rng';
 export { BOARD_SIZE, chooseWords, rotateSpymasters } from './engine/setup';
 export { gameStats, type GameStats, type TeamStats } from './engine/stats';
+export {
+  agentsLeft,
+  applyCoopAction,
+  COOP_AGENTS,
+  COOP_LAYOUT,
+  COOP_MAX_PLAYERS,
+  COOP_MIN_PLAYERS,
+  COOP_TURNS,
+  coopBlocker,
+  startCoop,
+  totalAgentsLeft,
+  type CoopAction,
+  type CoopCard,
+  type CoopClue,
+  type CoopError,
+  type CoopErrorCode,
+  type CoopEvent,
+  type CoopKey,
+  type CoopPhase,
+  type CoopResult,
+  type CoopState,
+  type Side,
+} from './engine/coop';
 export * from './engine/types';
 export { HEALTH_PATH, healthResponseSchema, type HealthResponse } from './schemas/health';
 export {

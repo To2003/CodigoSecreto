@@ -50,7 +50,7 @@ export function applyAction(state: GameState | null, action: Action, rng: Rng): 
   return error ? fail(error.code, error.clue ? { clue: error.clue } : {}) : turn.result();
 }
 
-const isValidCount = (count: ClueCount) =>
+export const isValidCount = (count: ClueCount) =>
   count === 'inf' || (Number.isInteger(count) && count >= 0 && count <= 9);
 
 /** Mutable working copy for one action. Created from a clone, so `state` is never touched. */
