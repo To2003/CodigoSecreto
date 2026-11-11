@@ -33,6 +33,28 @@ export function soundsFor(events: readonly RoomEvent[], view: RoomView): SoundId
       case 'GAME_OVER':
         sounds.push(me?.team === 'spectator' || me?.team === e.winner ? 'win' : 'lose');
         break;
+      // Cooperative mode (M9.1): everyone is on the same side.
+      case 'COOP_CLUE':
+        sounds.push('clue');
+        if (me?.team !== 'spectator' && me?.team !== e.giver) sounds.push('your_turn');
+        break;
+      case 'COOP_GUESS':
+        sounds.push(
+          'flip',
+          e.result === 'agent'
+            ? 'reveal_own'
+            : e.result === 'traitor'
+              ? 'reveal_traitor'
+              : 'reveal_civil',
+        );
+        break;
+      case 'COOP_TURN':
+        sounds.push('turn_change');
+        if (me?.team === e.giver) sounds.push('your_turn');
+        break;
+      case 'COOP_OVER':
+        sounds.push(e.won ? 'win' : 'lose');
+        break;
       default:
         break;
     }
@@ -42,6 +64,13 @@ export function soundsFor(events: readonly RoomEvent[], view: RoomView): SoundId
 
 /** It's this player's move: spymaster in their team's clue phase, or agent while guessing. */
 export function isMyTurn(view: RoomView): boolean {
+  const coop = view.coop;
+  if (coop) {
+    if (coop.phase.name === 'over' || coop.side === null) return false;
+    return coop.phase.name === 'clue'
+      ? coop.side === coop.phase.giver
+      : coop.side !== coop.phase.giver;
+  }
   const phase = view.game?.phase;
   const me = view.players.find((p) => p.id === view.youId);
   if (!phase || phase.name === 'over' || view.game?.paused || me?.team !== phase.team) return false;

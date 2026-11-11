@@ -38,14 +38,23 @@ function TypedClue({ clue }: { clue: ClueRecord }) {
   );
 }
 
-function ClueInput({ view }: { view: RoomView }) {
+/** The spymaster's clue form, with live validation (SPEC §1.6). Cooperative mode reuses it. */
+export function ClueInput({
+  hiddenWords,
+  compoundWords,
+  prompt,
+}: {
+  /** Words still face down: a clue can't be, contain or be contained in any of them. */
+  hiddenWords: string[];
+  compoundWords: boolean;
+  prompt: string;
+}) {
   const [word, setWord] = useState('');
   const [count, setCount] = useState<ClueCount>(1);
   const [serverError, setServerError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const id = useId();
-  const unrevealed = (view.game?.cards ?? []).filter((c) => !c.revealed).map((c) => c.word);
-  const check = validateClue(word, unrevealed, { allowCompound: view.settings.compoundWords });
+  const check = validateClue(word, hiddenWords, { allowCompound: compoundWords });
   const clueError =
     word.trim() === '' || check.ok
       ? null
@@ -78,7 +87,7 @@ function ClueInput({ view }: { view: RoomView }) {
         void send();
       }}
     >
-      <p className="font-semibold">{t.game.yourTurnSpymaster}</p>
+      <p className="font-semibold">{prompt}</p>
       <Tip id="clue" text={t.tips.clue} />
       <label htmlFor={`${id}-word`} className="sr-only">
         {t.game.clueLabel}
@@ -173,7 +182,14 @@ function PhaseActions({ view, teamName }: { view: RoomView; teamName: (team: Tea
   const spymaster = view.players.find((p) => p.team === phase.team && p.role === 'spymaster');
 
   if (phase.name === 'clue') {
-    if (onActiveTeam && me.role === 'spymaster') return <ClueInput view={view} />;
+    if (onActiveTeam && me.role === 'spymaster')
+      return (
+        <ClueInput
+          hiddenWords={game.cards.filter((c) => !c.revealed).map((c) => c.word)}
+          compoundWords={view.settings.compoundWords}
+          prompt={t.game.yourTurnSpymaster}
+        />
+      );
     return (
       <p>
         {onActiveTeam

@@ -7,6 +7,7 @@ import { joinRoom } from '../net/client';
 import { useRoom } from '../store/room';
 import { useSoundCues } from '../audio/useSoundCues';
 import type { RoomView } from '@clave/shared';
+import { CoopGame } from './CoopGame';
 import { Game } from './Game';
 import { Lobby } from './Lobby';
 
@@ -86,5 +87,6 @@ export function RoomScreen({ code }: { code: string }) {
 /** In a room: sounds and music run for both the lobby and the game. */
 function InRoom({ view }: { view: RoomView }) {
   useSoundCues(view);
+  if (view.coop) return <CoopGame view={view} coop={view.coop} />;
   return view.game ? <Game view={view} /> : <Lobby view={view} />;
 }

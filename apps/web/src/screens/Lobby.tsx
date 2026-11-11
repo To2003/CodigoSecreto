@@ -71,35 +71,54 @@ function TeamColumn({
   const spymaster = members.find((p) => p.role === 'spymaster');
   const agents = members.filter((p) => p.role === 'agent');
   const you = view.players.find((p) => p.id === view.youId);
-  const name = t.lobby.teamLabel(team, view.settings.teamNames[team]);
+  // Cooperative mode (M9.1): sides A and B, no spymasters: everyone sees their own side's map.
+  const coop = view.settings.mode === 'coop';
+  const name = coop ? t.coop.side[team] : t.lobby.teamLabel(team, view.settings.teamNames[team]);
   const accent = team === 'red' ? 'bg-red-deep pattern-red' : 'bg-blue-deep pattern-blue';
 
   return (
     <section aria-label={name} data-team={team} className="flex flex-col rounded-lg bg-surface">
       <h2 className={`rounded-t-lg px-4 py-2 font-stamp text-xl text-paper ${accent}`}>{name}</h2>
       <div className="flex flex-1 flex-col gap-3 p-4">
-        <div>
-          <h3 className="text-sm font-semibold text-paper/80">{t.lobby.spymaster}</h3>
-          {spymaster ? (
-            <ul>
-              <PlayerRow player={spymaster} view={view} />
-            </ul>
-          ) : (
-            <p className="py-1 text-sm text-paper/60">{t.lobby.noSpymaster}</p>
-          )}
-        </div>
-        <div>
-          <h3 className="text-sm font-semibold text-paper/80">{t.lobby.agents}</h3>
-          {agents.length > 0 ? (
-            <ul>
-              {agents.map((p) => (
-                <PlayerRow key={p.id} player={p} view={view} />
-              ))}
-            </ul>
-          ) : (
-            <p className="py-1 text-sm text-paper/60">{t.lobby.noAgents}</p>
-          )}
-        </div>
+        {coop ? (
+          <div>
+            <h3 className="text-sm font-semibold text-paper/80">{t.coop.members}</h3>
+            {members.length > 0 ? (
+              <ul>
+                {members.map((p) => (
+                  <PlayerRow key={p.id} player={p} view={view} />
+                ))}
+              </ul>
+            ) : (
+              <p className="py-1 text-sm text-paper/60">{t.coop.noMembers}</p>
+            )}
+          </div>
+        ) : (
+          <>
+            <div>
+              <h3 className="text-sm font-semibold text-paper/80">{t.lobby.spymaster}</h3>
+              {spymaster ? (
+                <ul>
+                  <PlayerRow player={spymaster} view={view} />
+                </ul>
+              ) : (
+                <p className="py-1 text-sm text-paper/60">{t.lobby.noSpymaster}</p>
+              )}
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-paper/80">{t.lobby.agents}</h3>
+              {agents.length > 0 ? (
+                <ul>
+                  {agents.map((p) => (
+                    <PlayerRow key={p.id} player={p} view={view} />
+                  ))}
+                </ul>
+              ) : (
+                <p className="py-1 text-sm text-paper/60">{t.lobby.noAgents}</p>
+              )}
+            </div>
+          </>
+        )}
         <div className="mt-auto flex flex-wrap gap-2">
           {you?.team !== team && (
             <button
@@ -112,7 +131,7 @@ function TeamColumn({
               {t.lobby.joinTeam}
             </button>
           )}
-          {you?.team === team && you.role === 'agent' && !spymaster && (
+          {!coop && you?.team === team && you.role === 'agent' && !spymaster && (
             <button
               type="button"
               className="rounded-md border border-accent px-3 py-1 text-sm text-accent active:scale-97"
@@ -123,7 +142,7 @@ function TeamColumn({
               {t.lobby.beSpymaster}
             </button>
           )}
-          {you?.team === team && you.role === 'spymaster' && (
+          {!coop && you?.team === team && you.role === 'spymaster' && (
             <button
               type="button"
               className="rounded-md border border-paper/40 px-3 py-1 text-sm active:scale-97"
@@ -147,8 +166,14 @@ export function Lobby({ view }: { view: RoomView }) {
   const you = view.players.find((p) => p.id === view.youId);
   const spectators = view.players.filter((p) => p.team === 'spectator');
   const names = {
-    red: t.lobby.teamLabel('red', view.settings.teamNames.red),
-    blue: t.lobby.teamLabel('blue', view.settings.teamNames.blue),
+    red:
+      view.settings.mode === 'coop'
+        ? t.coop.side.red
+        : t.lobby.teamLabel('red', view.settings.teamNames.red),
+    blue:
+      view.settings.mode === 'coop'
+        ? t.coop.side.blue
+        : t.lobby.teamLabel('blue', view.settings.teamNames.blue),
   };
   const link = `${window.location.origin}/sala/${view.code}`;
 
@@ -279,7 +304,7 @@ export function Lobby({ view }: { view: RoomView }) {
                     act(randomizeTeams());
                   }}
                 >
-                  {t.lobby.randomize}
+                  {view.settings.mode === 'coop' ? t.coop.randomize : t.lobby.randomize}
                 </button>
               </>
             )}

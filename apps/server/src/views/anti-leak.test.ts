@@ -398,4 +398,57 @@ describe('anti-leak (SPEC §2.1)', () => {
       expect(inspected, watcher.name).toBeGreaterThan(5);
     }
   });
+
+  /**
+   * M9.1, cooperative mode: each side must get its own map only, spectators none, until the end.
+   * At the end both maps are public, which lets the test check that every earlier payload to side
+   * A carried exactly A's map (and so nothing of B's).
+   */
+  it('cooperative: each side gets only its own map, spectators none', async () => {
+    const ana = await join('Ana');
+    const code = ana.view()?.code ?? '';
+    const beto = await join('Beto', code);
+    const eli = await join('Eli', code);
+    await eli.socket.emitWithAck('lobby:setTeam', { team: 'spectator' });
+    await ana.socket.emitWithAck('lobby:updateSettings', { settings: { mode: 'coop' } });
+    expect(await ana.socket.emitWithAck('game:start', {})).toEqual({ ok: true });
+    await settle();
+    // A few turns: A clues, B guesses one of A's agents and passes; then B clues, A hits a traitor.
+    const mapOf = (p: Player) => p.view()?.coop?.cards ?? [];
+    await ana.socket.emitWithAck('game:clue', { word: 'QXZ', count: 1 });
+    await settle();
+    const aAgent = mapOf(ana).find((c) => c.key === 'agent');
+    await beto.socket.emitWithAck('game:reveal', { cardId: aAgent?.id ?? '' });
+    await beto.socket.emitWithAck('game:endGuessing', {});
+    await settle();
+    await beto.socket.emitWithAck('game:clue', { word: 'QXZ', count: 1 });
+    await settle();
+    const bTraitor = mapOf(beto).find((c) => c.key === 'traitor' && !c.found);
+    await ana.socket.emitWithAck('game:reveal', { cardId: bTraitor?.id ?? '' });
+    await settle();
+    expect(ana.view()?.coop?.phase).toMatchObject({ name: 'over', won: false });
+
+    const final = new Map((ana.view()?.coop?.cards ?? []).map((c) => [c.id, c.keys]));
+    const coopViews = (p: Player) =>
+      p.payloads
+        .map((x) => (x as { view?: RoomView } | null)?.view?.coop)
+        .filter((v): v is NonNullable<RoomView['coop']> => Boolean(v) && v?.phase.name !== 'over');
+    for (const [player, side] of [
+      [ana, 'red'],
+      [beto, 'blue'],
+    ] as const) {
+      const views = coopViews(player);
+      expect(views.length, player.name).toBeGreaterThan(2);
+      for (const v of views) {
+        expect(v.side).toBe(side);
+        for (const card of v.cards) {
+          expect(card.keys, player.name).toBeUndefined();
+          expect(card.key, player.name).toBe(final.get(card.id)?.[side]);
+        }
+      }
+    }
+    for (const v of coopViews(eli)) {
+      expect(v.cards.every((c) => c.key === undefined && c.keys === undefined)).toBe(true);
+    }
+  });
 });

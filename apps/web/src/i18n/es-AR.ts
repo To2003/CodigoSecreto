@@ -329,6 +329,15 @@ export const t = {
         ],
       },
       {
+        id: 'cooperativo',
+        title: 'Modo cooperativo',
+        body: [
+          'Para 2 o 3 jugadores, todos contra el tablero. Hay dos lados, A y B, y cada uno tiene su propio mapa de las mismas 25 palabras: 9 agentes, 3 traidores y 13 civiles. Lo que es agente para un lado puede ser civil o traidor para el otro.',
+          'Un lado da la pista mirando su mapa y el otro adivina según ese mapa. Un agente queda encontrado; un civil termina el turno (pero puede ser agente del otro mapa, y se puede buscar ahí más adelante); un traidor hace perder a todos.',
+          'Ganan si encuentran a los 15 agentes antes de gastar los 9 turnos. Cada pista gasta un turno. Si un lado ya no tiene agentes por encontrar en su mapa, el otro da todas las pistas que quedan.',
+        ],
+      },
+      {
         id: 'sala',
         title: 'Configuración de sala',
         body: [
@@ -465,6 +474,9 @@ export const t = {
   coop: {
     side: { red: 'Lado A', blue: 'Lado B' } satisfies Record<Team, string>,
     sideShort: { red: 'A', blue: 'B' } satisfies Record<Team, string>,
+    members: 'Jugadores',
+    randomize: 'Sortear lados',
+    noMembers: 'Nadie en este lado todavía.',
     agentsLeft: (n: number) => (n === 1 ? 'Falta 1 agente' : `Faltan ${n} agentes`),
     turnsLeft: (n: number) => (n === 1 ? 'Queda 1 turno' : `Quedan ${n} turnos`),
     yourClue: 'Te toca dar la pista: mirá tu mapa y conectá tus agentes.',

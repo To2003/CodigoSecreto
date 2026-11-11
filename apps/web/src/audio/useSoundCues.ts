@@ -49,7 +49,9 @@ export function useSoundCues(view: RoomView) {
   }, [messages, view.youId]);
 
   // Music: lobby loop or game loop; the tension layer when a team is about to win.
-  const inGame = view.game !== null && view.game.phase.name !== 'over';
+  const inGame =
+    (view.game !== null && view.game.phase.name !== 'over') ||
+    (view.coop !== null && view.coop.phase.name !== 'over');
   const close = view.game
     ? Math.min(view.game.remaining.red, view.game.remaining.blue) <= 2
     : false;
