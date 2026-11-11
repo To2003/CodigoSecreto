@@ -4,6 +4,8 @@ import {
   applyCoopAction,
   chooseWords,
   coopBlocker,
+  coopEmoteBlocked,
+  emoteBlocked,
   startCoop,
   rotateSpymasters,
   MAX_PLAYERS,
@@ -500,8 +502,27 @@ export class Room {
       .map((c) => c.message);
   }
 
+  /**
+   * SPEC §9 as amended by ADR-032: no emotes for a spymaster while their team guesses (they'd
+   * work as yes/no), nor for anyone else who saw this game's map and has no team to play for
+   * (a benched spymaster, a spectator with the map) during any guessing. The rule itself is in
+   * the engine; this adds what only the room knows: who has seen the map.
+   */
+  private emoteMuted(playerId: string): boolean {
+    if (this.status !== 'playing') return false;
+    if (this.coop) return coopEmoteBlocked(this.coop, playerId);
+    const game = this.game;
+    if (!game) return false;
+    if (emoteBlocked(game, playerId)) return true;
+    const guessing = game.phase.name === 'guess' || game.phase.name === 'objection';
+    const benched = game.players.some((p) => p.id === playerId && p.team === 'spectator');
+    return guessing && benched && this.mapSeers.has(playerId);
+  }
+
   emote(playerId: string, emoteId: EmoteId): EmoteEvent {
     this.player(playerId);
+    // Checked before the rate limit, so a refused emote doesn't use up the next one.
+    if (this.emoteMuted(playerId)) throw new RoomError('EMOTE_NOT_NOW');
     this.throttle(this.lastEmote, playerId, EMOTE_INTERVAL_MS);
     return { playerId, emoteId };
   }
@@ -681,6 +702,7 @@ export class Room {
       scoreboard: this.scoreboard,
       startBlockers: this.startBlockers(),
       chatMuted: this.mutedInGame(forId),
+      emotesMuted: this.emoteMuted(forId),
       coop: this.coop ? toCoopView(this.coop, forId) : null,
       game: this.game
         ? toPublicView(this.game, forId, this.paused(), {

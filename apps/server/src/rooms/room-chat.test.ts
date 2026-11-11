@@ -101,6 +101,11 @@ describe('chat', () => {
     // The new spymaster is muted too; a plain agent isn't.
     expect(code(() => room.sendChat(agent, 'ahora soy jefe', 'all'))).toBe('CHAT_NOT_ALLOWED');
     expect(room.view('p3').chatMuted).toBe(false);
+    // Benched but knows the map: no emotes either while that team guesses (ADR-032).
+    expect(code(() => room.emote(sm, 'fire'))).toBe('NO_ERROR');
+    clock += 5_000;
+    room.act(agent, { type: 'GIVE_CLUE', playerId: agent, word: 'QXZ', count: 'inf' });
+    expect(code(() => room.emote(sm, 'fire'))).toBe('EMOTE_NOT_NOW');
   });
 
   it('history only has what each player could read, at most the last 50', () => {
@@ -132,4 +137,48 @@ describe('emotes', () => {
     clock = 2_000;
     expect(code(() => room.emote('p1', 'clap'))).toBe('NO_ERROR');
   });
+
+  /** ADR-032: a spymaster's emote while their team guesses would be a yes/no signal. */
+  describe('spymasters while their team is guessing (ADR-032)', () => {
+    const guessing = () => {
+      room.start('p1', mulberry32(1));
+      const phase = room.game?.phase;
+      if (!phase || phase.name === 'over') throw new Error('setup');
+      const [sm, rival, agent] = phase.team === 'red' ? ['p1', 'p2', 'p3'] : ['p2', 'p1', 'p4'];
+      room.act(sm, { type: 'GIVE_CLUE', playerId: sm, word: 'QXZ', count: 'inf' });
+      return { sm, rival, agent };
+    };
+
+    it('the server refuses the guessing team’s spymaster; everyone else may', () => {
+      const { sm, rival, agent } = guessing();
+      expect(code(() => room.emote(sm, 'fire'))).toBe('EMOTE_NOT_NOW');
+      expect(room.view(sm).emotesMuted).toBe(true);
+      expect(code(() => room.emote(rival, 'fire'))).toBe('NO_ERROR');
+      expect(code(() => room.emote(agent, 'fire'))).toBe('NO_ERROR');
+      expect(code(() => room.emote('p5', 'fire'))).toBe('NO_ERROR');
+      expect(room.view(rival).emotesMuted).toBe(false);
+    });
+
+    it('a refused emote does not use up the rate limit; the turn change frees it', () => {
+      const { sm, agent } = guessing();
+      room.emote(agent, 'clap'); // someone else's emote doesn't matter either
+      expect(code(() => room.emote(sm, 'fire'))).toBe('EMOTE_NOT_NOW');
+      room.act(agent, { type: 'REVEAL_CARD', playerId: agent, cardId: civilian() });
+      // A civilian ended the turn: now it's the rival's, and the spymaster may emote at once.
+      expect(code(() => room.emote(sm, 'fire'))).toBe('NO_ERROR');
+    });
+
+    it('allowed again at the end of the game and back in the lobby', () => {
+      const { sm, agent } = guessing();
+      const traitor = room.game?.cards.find((c) => c.type === 'traitor');
+      room.act(agent, { type: 'REVEAL_CARD', playerId: agent, cardId: traitor?.id ?? '' });
+      expect(room.status).toBe('over');
+      expect(code(() => room.emote(sm, 'clap'))).toBe('NO_ERROR');
+      clock += 5_000;
+      room.backToLobby('p1');
+      expect(code(() => room.emote(sm, 'fire'))).toBe('NO_ERROR');
+    });
+  });
 });
+
+const civilian = () => room.game?.cards.find((c) => c.type === 'civilian' && !c.revealed)?.id ?? '';

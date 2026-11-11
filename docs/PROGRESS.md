@@ -25,7 +25,7 @@ Se actualiza al cerrar cada hito. Detalle de cada plan en `docs/plans/M{n}.md`, 
 - **Bundle inicial +17 KB sobre M4** (151 KB, techo 250): Motion para el lobby, audio sintetizado y efectos. Explicado en `docs/RATCHET.md`. También separé en `size-limit` el bundle inicial del total con chunks lazy (antes se sumaban bajo el nombre "Initial"); los dos quedan bajo 250 KB.
 - **E2E contra el build de producción** (ADR-026): `pnpm e2e` ahora hace `vite build` antes; si tenés `pnpm dev` corriendo en el 5173, Playwright reusa ese.
 
-- **Emotes de los jefes** (M7): el SPEC deja que los jefes manden emotes durante la partida. Ven las marcas de su equipo, así que un 🔥 o un 😱 justo después de que alguien señala una carta funciona como "sí/no". Está limitado a uno cada 2 s; si te parece mucho, se pueden limitar los emotes de los jefes a cuando no es el turno de adivinar de su equipo.
+- ~~**Emotes de los jefes** (M7)~~: resuelto con tu regla (ADR-032): los jefes no mandan emotes mientras su equipo adivina; lo aplica el server.
 - **Chat silenciado de más** (M7, ADR-027): además de los jefes, no escriben durante la partida los espectadores que ven el mapa ni un jefe reemplazado (ya vio el mapa).
 - **Falso positivo del floor guard** (BACKLOG #9): marca `.skip` en código de la app; renombré la clave de copy en vez de tocar el guard.
 

@@ -252,6 +252,7 @@ export const t = {
     line: (name: string, text: string, team: boolean) =>
       team ? `${name} (equipo): ${text}` : `${name}: ${text}`,
     emotes: 'Emotes',
+    emotesMuted: 'Mientras tu equipo adivina, no hay emotes: serían una seña.',
     emoji: {
       thinking: '🤔',
       shocked: '😱',
@@ -342,7 +343,7 @@ export const t = {
         title: 'Configuración de sala',
         body: [
           'Quien arma la sala elige los mazos de palabras (o carga las propias), los tiempos para dar la pista y para adivinar (con 30 s de regalo en el primer turno de cada equipo), si se revela con cualquier agente o con la mayoría del equipo, si hay objeciones, si los espectadores ven el mapa, si valen palabras compuestas y si hay chat.',
-          'Durante la partida, quien ve el mapa no puede escribir en el chat: solo emotes.',
+          'Durante la partida, quien ve el mapa no puede escribir en el chat: solo emotes. Y mientras su equipo adivina, los jefes tampoco mandan emotes, porque funcionarían como un sí o un no.',
         ],
       },
       {
@@ -617,6 +618,7 @@ export const t = {
     NO_AGENT_LEFT: 'Si lo hacés jefe, el equipo se queda sin agentes para adivinar.',
     CHAT_DISABLED: 'El chat está apagado en esta sala.',
     CHAT_NOT_ALLOWED: 'Quien ve el mapa no escribe durante la partida: solo emotes.',
+    EMOTE_NOT_NOW: 'Mientras tu equipo adivina, los jefes no mandan emotes: serían una seña.',
     JOIN_LIMITED:
       'Hubo demasiados intentos de entrar a salas desde tu red. Esperá un minuto y probá de nuevo.',
     CANNOT_START: 'Todavía no se puede empezar: faltan jugadores o palabras.',

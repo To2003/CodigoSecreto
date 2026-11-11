@@ -186,4 +186,29 @@ describe('chat and emotes over sockets', () => {
     const unknown = await beto.socket.emitWithAck('emote:send', { emoteId: 'poop' } as never);
     expect(unknown).toMatchObject({ ok: false, error: { code: 'BAD_REQUEST' } });
   });
+
+  it('refuses a spymaster’s emote while their team guesses, and nobody gets it (ADR-032)', async () => {
+    const { ana, beto, caro, dani } = await table();
+    await ana.socket.emitWithAck('game:start', {});
+    await until(() => Boolean(ana.seen.view?.game));
+    const phase = ana.seen.view?.game?.phase;
+    if (!phase || phase.name === 'over') throw new Error('setup');
+    const [giver, rival] = phase.team === 'red' ? [ana, beto] : [beto, ana];
+    // Giving the clue, the spymaster may still emote.
+    expect(await giver.socket.emitWithAck('emote:send', { emoteId: 'thinking' })).toEqual({
+      ok: true,
+    });
+    clock += 5_000;
+    await giver.socket.emitWithAck('game:clue', { word: 'QXZ', count: 1 });
+    await until(() => caro.seen.view?.game?.phase.name === 'guess');
+    const refused = await giver.socket.emitWithAck('emote:send', { emoteId: 'fire' });
+    expect(refused).toMatchObject({ ok: false, error: { code: 'EMOTE_NOT_NOW' } });
+    expect(giver.seen.view?.emotesMuted).toBe(true);
+    // The rival spymaster isn't signalling to anyone useful: allowed.
+    expect(await rival.socket.emitWithAck('emote:send', { emoteId: 'clap' })).toEqual({ ok: true });
+    await until(() => caro.seen.emotes.length === 2 && dani.seen.emotes.length === 2);
+    for (const p of [caro, dani]) {
+      expect(p.seen.emotes.map((e) => e.emoteId)).toEqual(['thinking', 'clap']);
+    }
+  });
 });

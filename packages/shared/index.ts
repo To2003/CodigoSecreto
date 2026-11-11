@@ -9,6 +9,7 @@ export {
 export { mulberry32, pick, randomId, shuffle, type Rng } from './engine/rng';
 export { BOARD_SIZE, chooseWords, rotateSpymasters } from './engine/setup';
 export { gameStats, type GameStats, type TeamStats } from './engine/stats';
+export { coopEmoteBlocked, emoteBlocked } from './engine/emotes';
 export {
   agentsLeft,
   applyCoopAction,

@@ -24,6 +24,7 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   NO_AGENT_LEFT: 'Si lo hacés jefe, el equipo se queda sin agentes para adivinar.',
   CHAT_DISABLED: 'El chat está apagado en esta sala.',
   CHAT_NOT_ALLOWED: 'Quien ve el mapa no escribe durante la partida: solo emotes.',
+  EMOTE_NOT_NOW: 'Mientras tu equipo adivina, los jefes no mandan emotes: serían una seña.',
   JOIN_LIMITED:
     'Hubo demasiados intentos de entrar a salas desde tu red. Esperá un minuto y probá de nuevo.',
   CANNOT_START: 'Todavía no se puede empezar: faltan jugadores o palabras.',

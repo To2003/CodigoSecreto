@@ -41,6 +41,8 @@ export interface RoomView {
   startBlockers: StartBlocker[];
   /** True while this player may not write in the chat: they saw the key map (SPEC §9). */
   chatMuted: boolean;
+  /** True while this player may not send emotes: a spymaster whose team is guessing (ADR-032). */
+  emotesMuted: boolean;
   /** Present from the start of a game until the room goes back to the lobby. */
   game: GameView | null;
   /** The cooperative game (M9.1), when the room plays that mode; `game` is null then. */
@@ -89,6 +91,7 @@ export type ErrorCode =
   | 'CHAT_DISABLED'
   | 'CHAT_NOT_ALLOWED'
   | 'JOIN_LIMITED'
+  | 'EMOTE_NOT_NOW'
   | EngineErrorCode;
 
 export interface ErrorPayload {

@@ -361,6 +361,9 @@ describe('anti-leak (SPEC §2.1)', () => {
       const now = game.phase.team;
       await spymaster[now].socket.emitWithAck('game:clue', { word: 'QXZ', count: 'inf' });
       await settle();
+      // ADR-032: a spymaster's emote while the team guesses would be a yes/no on the map.
+      const signal = await spymaster[now].socket.emitWithAck('emote:send', { emoteId: 'fire' });
+      expect(signal).toMatchObject({ ok: false, error: { code: 'EMOTE_NOT_NOW' } });
       const own = (spymaster[now].view()?.game?.cards ?? []).filter(
         (c) => !c.revealed && c.type === now,
       );
@@ -384,6 +387,18 @@ describe('anti-leak (SPEC §2.1)', () => {
     expect(texts(dani)).not.toContain('plan rojo');
     expect(texts(eli)).toEqual([]);
     expect(texts(beto)).not.toContain('plan rojo');
+    // No spymaster emote ever reached an agent or the spectator during a guess (ADR-032).
+    const spymasterIds = new Set([ana.id, beto.id]);
+    for (const watcher of [caro, dani, eli]) {
+      const emotes = watcher.payloads.filter(
+        (x): x is { playerId: string; emoteId: string } =>
+          typeof (x as { emoteId?: unknown }).emoteId === 'string',
+      );
+      expect(
+        emotes.filter((e) => spymasterIds.has(e.playerId)),
+        watcher.name,
+      ).toEqual([]);
+    }
 
     for (const watcher of [caro, dani, eli]) {
       let inspected = 0;

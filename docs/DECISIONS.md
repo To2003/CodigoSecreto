@@ -266,3 +266,15 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Decisión**: `manifest.webmanifest`, íconos propios (SVG en código, PNG renderizados de ese SVG) y un service worker escrito a mano (`public/sw.js`), registrado solo en el build de producción. Sin `vite-plugin-pwa`: es una dependencia más para unas 50 líneas.
 - **Qué cachea**: la página con red primero (un deploy nuevo se ve enseguida) y el último shell guardado si no hay red; `/assets/*` e íconos con caché primero (llevan hash). Nunca toca el server del juego (otro origen): sin red, la app abre pero muestra que no conecta, que es la verdad.
 - **Vercel**: `/sw.js` con `Cache-Control: no-cache`, para que una versión nueva del worker se tome en la próxima visita.
+
+## ADR-032 — Los jefes no mandan emotes mientras su equipo adivina (corrige SPEC §9)
+
+- **Estado**: Aceptada (2026-11-11, pedido de Tomás)
+- **Corrección del SPEC §9** (el SPEC no se toca; esta es la versión que vale): donde dice "**Los jefes no pueden escribir en el chat durante la partida** (solo emotes)", vale: los jefes no pueden escribir en el chat durante la partida, y **tampoco pueden mandar emotes mientras su equipo está en la fase de adivinar**. Sí pueden mandarlos cuando no es el turno de su equipo, mientras dan la pista, en el lobby y en el fin de partida.
+- **Por qué**: el jefe ve el mapa y las marcas de "señalar" de su equipo; un 🔥 o un 😱 justo después de que alguien señala una carta funciona como un sí o un no.
+- **Dónde vive la regla**: en el motor (`packages/shared/engine/emotes.ts`, funciones puras con tests) y la aplica el server en `Room.emote`, que rechaza con `EMOTE_NOT_NOW` antes del rate limit (un emote rechazado no gasta el siguiente). La interfaz solo desactiva los botones y explica por qué, con el `emotesMuted` que manda el server en la vista.
+- **Alcance, con el criterio más conservador**:
+  - "Fase de adivinar" incluye la votación de una objeción sobre la pista de su equipo (sigue siendo su turno de adivinar).
+  - Un jefe reemplazado durante una pausa (queda de espectador) y un espectador que ve el mapa tampoco mandan emotes mientras cualquier equipo adivina: vieron el mapa y no tienen equipo propio que cuidar.
+  - Modo cooperativo: el lado cuyo mapa se está adivinando no manda emotes durante esa fase (es la misma seña).
+- **Tests**: unitarios del motor, de la sala (rival y agentes sí pueden; el turno siguiente lo libera; fin y lobby), por sockets (el server rechaza y nadie recibe el emote) y en el test anti-filtración (el jefe que adivina recibe `EMOTE_NOT_NOW` y ningún emote de un jefe llega a agentes ni espectadores). Verificado con mutación: sin la regla fallan 6 tests.

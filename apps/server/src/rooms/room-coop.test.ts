@@ -92,6 +92,15 @@ describe('cooperative mode in a room (M9.1)', () => {
     expect(room.view('p1').coop).toBeNull();
   });
 
+  it('the side whose map is being guessed can’t send emotes (ADR-032)', () => {
+    room.start('p1', mulberry32(1));
+    expect(code(() => room.emote('p1', 'fire'))).toBe('NO_ERROR');
+    clue('p1');
+    expect(code(() => room.emote('p1', 'clap'))).toBe('EMOTE_NOT_NOW');
+    expect(room.view('p1').emotesMuted).toBe(true);
+    expect(code(() => room.emote('p2', 'clap'))).toBe('NO_ERROR');
+  });
+
   it('rematch is refused while the game is still on', () => {
     room.start('p1', mulberry32(1));
     expect(code(() => room.rematch('p1', false))).toBe('GAME_IN_PROGRESS');

@@ -6,7 +6,11 @@ import { useSocial } from '../../store/social';
 
 const SCOPES = ['all', 'team'] as const;
 
-export function EmoteBar() {
+/**
+ * Quick reactions. `muted` mirrors the server's rule (ADR-032): the server is what refuses the
+ * emote; the UI only explains why the buttons are off.
+ */
+export function EmoteBar({ muted, describedBy }: { muted: boolean; describedBy?: string }) {
   const [error, setError] = useState<string | null>(null);
   return (
     <div className="flex flex-col gap-1">
@@ -15,13 +19,15 @@ export function EmoteBar() {
           <button
             key={id}
             type="button"
+            disabled={muted}
+            aria-describedby={muted ? describedBy : undefined}
             aria-label={t.social.emoteName[id]}
             onClick={() => {
               void sendEmote(id).then((res) => {
                 setError(res.ok ? null : t.errors[res.code]);
               });
             }}
-            className="flex size-9 items-center justify-center rounded-md border border-line text-lg active:scale-97"
+            className="flex size-9 items-center justify-center rounded-md border border-line text-lg active:scale-97 disabled:opacity-40"
           >
             {t.social.emoji[id]}
           </button>
@@ -69,7 +75,12 @@ export function ChatPanel({ view, className = '' }: { view: RoomView; className?
       className={`flex flex-col gap-2 rounded-lg bg-surface p-3 ${className}`}
     >
       <h2 className="font-stamp text-lg">{t.social.chat}</h2>
-      <EmoteBar />
+      <EmoteBar muted={view.emotesMuted} describedBy={`${inputId}-emotes`} />
+      {view.emotesMuted && (
+        <p id={`${inputId}-emotes`} className="text-xs text-paper/70">
+          {t.social.emotesMuted}
+        </p>
+      )}
       <div
         ref={logRef}
         role="log"
