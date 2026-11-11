@@ -20,7 +20,7 @@ function SleepyAgents() {
           <text
             x="12"
             y="-22"
-            className="anim-zzz anim-move fill-accent font-stamp text-[10px]"
+            className="anim-zzz fill-accent font-stamp text-[10px]"
             style={{ animationDelay: `${String(i * 600)}ms` }}
           >
             {t.wake.snore}
@@ -39,13 +39,29 @@ export function WakeScreen({ onRetry }: { onRetry: () => void }) {
   const status = useWake((s) => s.status);
   const connected = useConnection((s) => s.status === 'connected');
   const retryRef = useRef<HTMLButtonElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
   const failed = status === 'failed';
+  const shown = !connected && (status === 'waking' || failed);
   useEffect(() => {
+    if (!shown) return;
     if (failed) retryRef.current?.focus();
-  }, [failed]);
-  if (connected || (status !== 'waking' && !failed)) return null;
+    else boxRef.current?.focus();
+  }, [shown, failed]);
+  // A modal for real: what's behind it can't be reached with the keyboard while it's up.
+  useEffect(() => {
+    const box = boxRef.current;
+    if (!shown || !box?.parentElement) return;
+    const behind = [...box.parentElement.children].filter((el) => el !== box);
+    for (const el of behind) el.setAttribute('inert', '');
+    return () => {
+      for (const el of behind) el.removeAttribute('inert');
+    };
+  }, [shown]);
+  if (!shown) return null;
   return (
     <div
+      ref={boxRef}
+      tabIndex={-1}
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="wake-title"
@@ -75,7 +91,7 @@ export function WakeScreen({ onRetry }: { onRetry: () => void }) {
           aria-label={t.wake.progress}
           className="h-1.5 w-56 max-w-full overflow-hidden rounded-full bg-paper/15"
         >
-          <div className="anim-indeterminate anim-move h-full w-1/3 rounded-full bg-accent" />
+          <div className="anim-indeterminate h-full w-1/3 rounded-full bg-accent" />
         </div>
       )}
     </div>

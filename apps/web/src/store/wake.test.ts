@@ -65,4 +65,11 @@ describe('wake (SPEC §0.4)', () => {
     await first;
     expect(useWake.getState().status).toBe('awake');
   });
+
+  it('a retry after a failure keeps the screen up instead of flickering away', () => {
+    useWake.setState({ status: 'failed' });
+    const done = wake(deps(() => new Promise(() => undefined)));
+    expect(useWake.getState().status).toBe('waking');
+    void done;
+  });
 });

@@ -6,11 +6,13 @@ const DOT: Record<ConnectionStatus, string> = {
   connected: 'bg-blue',
   reconnecting: 'bg-red',
   disconnected: 'bg-red',
+  refused: 'bg-red',
 };
 
 /** `compact`: on small screens only the dot shows; the text stays for screen readers. */
 export function ConnectionIndicator({ compact = false }: { compact?: boolean }) {
   const status = useConnection((s) => s.status);
+  const retry = useConnection((s) => s.retry);
   return (
     <p
       role="status"
@@ -23,6 +25,11 @@ export function ConnectionIndicator({ compact = false }: { compact?: boolean }) 
       <span className={compact && status === 'connected' ? 'sr-only sm:not-sr-only' : ''}>
         {t.connection[status]}
       </span>
+      {status === 'refused' && (
+        <button type="button" className="font-semibold text-accent underline" onClick={retry}>
+          {t.connection.retry}
+        </button>
+      )}
     </p>
   );
 }

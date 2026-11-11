@@ -35,7 +35,10 @@ jobs:
       - run: pnpm lint
       - run: pnpm format:check
       - name: Floor guard (cada commit contra su padre)
-        run: scripts/ci-floor-guard.sh "${{ github.event.pull_request.base.sha || github.event.before }}"
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          TIP: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: scripts/ci-floor-guard.sh "$BASE" "$TIP"
       - run: pnpm coverage
       - run: pnpm build
       - run: pnpm size
@@ -76,8 +79,22 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @clave/web build
+      # The landing measured as players get it: with the server up (otherwise the wake screen
+      # covers it). The preview runs on :4173, so that's the allowed origin.
+      - run: pnpm --filter @clave/server build
+      - name: Game server
+        run: |
+          cd apps/server
+          CLIENT_ORIGIN=http://localhost:4173 LOG_LEVEL=warn node dist/index.js &
+          for i in $(seq 1 30); do curl -sf http://localhost:3001/health && break; sleep 1; done
       # SPEC §10: Performance ≥ 90 and Accessibility ≥ 95 on the landing (lighthouserc.json).
       - run: npx --yes @lhci/cli@0.14.0 autorun
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-report
+          path: .lighthouseci/
+          retention-days: 7
 
   security:
     name: Seguridad (gitleaks, osv-scanner, semgrep)

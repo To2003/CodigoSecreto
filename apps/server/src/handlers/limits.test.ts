@@ -85,7 +85,32 @@ describe('per-IP limits', () => {
       ...profile,
       roomCode: created.roomCode,
     });
-    expect(hit).toMatchObject({ ok: false, error: { code: 'RATE_LIMITED' } });
+    expect(hit).toMatchObject({ ok: false, error: { code: 'JOIN_LIMITED' } });
+  });
+
+  it('the lockout never stops someone reclaiming their own seat (F5, reconnect)', async () => {
+    const host = await open();
+    const created = await host.socket.emitWithAck('room:create', profile);
+    if (!created.ok) throw new Error('setup');
+    for (const code of ['AAAA', 'BBBB', 'CCCC']) {
+      await host.socket.emitWithAck('room:join', { ...profile, roomCode: code });
+    }
+    const again = await open();
+    const back = await again.socket.emitWithAck('room:join', {
+      ...profile,
+      roomCode: created.roomCode,
+      playerId: created.playerId,
+      token: created.token,
+    });
+    expect(back).toMatchObject({ ok: true, playerId: created.playerId });
+    // A wrong token is a new seat: locked like any other.
+    const forged = await again.socket.emitWithAck('room:join', {
+      ...profile,
+      roomCode: created.roomCode,
+      playerId: created.playerId,
+      token: 'x'.repeat(32),
+    });
+    expect(forged).toMatchObject({ ok: false, error: { code: 'JOIN_LIMITED' } });
   });
 
   it('ignores a forged X-Forwarded-For when no proxy is trusted', async () => {

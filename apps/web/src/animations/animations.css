@@ -389,6 +389,28 @@
 .anim-indeterminate {
   animation: indeterminate 1.4s var(--ease-in-out) infinite;
 }
+/* Reduced motion: no blinking or drifting; the bar breathes in place (opacity only) instead of
+   standing still, which would look stuck. */
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+:root[data-motion='reduce'] .anim-blink,
+:root[data-motion='reduce'] .anim-zzz {
+  animation: none;
+}
+:root[data-motion='reduce'] .anim-zzz {
+  opacity: 0;
+}
+:root[data-motion='reduce'] .anim-indeterminate {
+  width: 100%;
+  animation: breathe 1.6s ease-in-out infinite;
+}
 
 /* Game over: the rest of the key map shows up in a cascade. */
 .anim-map-in {

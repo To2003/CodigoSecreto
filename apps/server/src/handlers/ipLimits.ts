@@ -19,23 +19,80 @@ export const DEFAULT_IP_LIMITS: IpLimitOptions = {
   windowMs: 60_000,
 };
 
+/** Private, loopback, link-local and carrier-grade NAT ranges: never a player's public address. */
+function isPrivate(ip: string): boolean {
+  if (ip.includes(':')) return /^(::1$|f[cd]|fe[89ab])/i.test(ip);
+  const [a = 0, b = 0] = ip.split('.').map(Number);
+  return (
+    a === 10 ||
+    a === 127 ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 169 && b === 254) ||
+    (a === 100 && b >= 64 && b <= 127)
+  );
+}
+
 /**
- * The client's IP. Behind a proxy (Render) the socket address is the proxy's, so the real one is
- * read from X-Forwarded-For, counting `trustedHops` from the right: entries further left were
- * written by the client and can be forged. With 0 hops the header is ignored.
+ * The key limits are counted under. IPv4-mapped IPv6 becomes plain IPv4; any other IPv6 address
+ * counts by its /64, since one home or phone usually gets a whole /64 and could rotate within it.
+ */
+export function limitKey(ip: string): string {
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(ip);
+  if (mapped?.[1]) return mapped[1];
+  if (!ip.includes(':')) return ip;
+  const [head = '', tail = ''] = ip.split('::');
+  const left = head ? head.split(':') : [];
+  const right = tail ? tail.split(':') : [];
+  const groups = ip.includes('::')
+    ? [...left, ...Array<string>(8 - left.length - right.length).fill('0'), ...right]
+    : left;
+  return `${groups
+    .slice(0, 4)
+    .map((g) => g.toLowerCase().replace(/^0+(?=.)/, ''))
+    .join(':')}::/64`;
+}
+
+/**
+ * The client's IP, as a limit key. Behind a proxy (Render) the socket address is the proxy's, so
+ * the real one is read from X-Forwarded-For, counting `trustedHops` from the right: entries further
+ * left were written by the client and can be forged. With 0 hops the header is ignored.
+ * Null means "can't tell who this is" (behind a proxy, the chosen entry is missing or private:
+ * the hop count is wrong for this host). Limits then don't apply rather than lumping every player
+ * under the proxy's address (M8 review).
  */
 export function clientIp(
   address: string,
   headers: IncomingHttpHeaders,
   trustedHops: number,
-): string {
-  if (trustedHops <= 0) return address;
+): string | null {
+  if (trustedHops <= 0) return limitKey(address);
+  const chosen = forwardedFor(headers)[forwardedFor(headers).length - trustedHops];
+  if (!chosen || isPrivate(limitKey(chosen))) return null;
+  return limitKey(chosen);
+}
+
+function forwardedFor(headers: IncomingHttpHeaders): string[] {
   const raw = headers['x-forwarded-for'];
-  const list = (Array.isArray(raw) ? raw.join(',') : (raw ?? ''))
+  return (Array.isArray(raw) ? raw.join(',') : (raw ?? ''))
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
-  return list[list.length - trustedHops] ?? address;
+}
+
+/**
+ * What the proxy chain looks like, without any address in it (addresses are personal data): how
+ * many X-Forwarded-For entries arrive and whether the trusted one looks like a player's. Logged
+ * once at startup traffic so the deploy can confirm TRUST_PROXY_HOPS (docs/DEPLOY.md §4).
+ */
+export function proxyDiagnosis(headers: IncomingHttpHeaders, trustedHops: number) {
+  const list = forwardedFor(headers);
+  const chosen = trustedHops > 0 ? list[list.length - trustedHops] : undefined;
+  return {
+    forwardedEntries: list.length,
+    trustedHops,
+    chosenEntry: chosen === undefined ? 'none' : isPrivate(limitKey(chosen)) ? 'private' : 'public',
+  };
 }
 
 type Counter = 'rooms' | 'failedJoins';
@@ -53,15 +110,17 @@ export class IpLimiter {
     private readonly now: () => number,
   ) {}
 
-  /** Registers a socket; false when that IP already has too many open. */
-  openSocket(ip: string): boolean {
+  /** Registers a socket; false when that IP already has too many open. Unknown IPs pass. */
+  openSocket(ip: string | null): boolean {
+    if (ip === null) return true;
     const open = this.sockets.get(ip) ?? 0;
     if (open >= this.options.socketsPerIp) return false;
     this.sockets.set(ip, open + 1);
     return true;
   }
 
-  closeSocket(ip: string) {
+  closeSocket(ip: string | null) {
+    if (ip === null) return;
     const open = (this.sockets.get(ip) ?? 1) - 1;
     if (open <= 0) this.sockets.delete(ip);
     else this.sockets.set(ip, open);
@@ -82,11 +141,13 @@ export class IpLimiter {
   }
 
   /** True while this IP is still under the limit for `counter` in the current window. */
-  allows(ip: string, counter: Counter): boolean {
+  allows(ip: string | null, counter: Counter): boolean {
+    if (ip === null) return true;
     return this.window(ip)[counter] < this.max(counter);
   }
 
-  count(ip: string, counter: Counter) {
+  count(ip: string | null, counter: Counter) {
+    if (ip === null) return;
     this.window(ip)[counter] += 1;
   }
 

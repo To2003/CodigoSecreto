@@ -26,6 +26,10 @@ function fakeSocket() {
       active = stillActive;
       handlers.get('disconnect')?.(reason);
     },
+    connectError: (stillActive: boolean) => {
+      active = stillActive;
+      handlers.get('connect_error')?.('TOO_MANY_CONNECTIONS');
+    },
   };
 }
 
@@ -59,5 +63,16 @@ describe('connection store', () => {
 
     socket.disconnect('io server disconnect', false);
     expect(useConnection.getState().status).toBe('disconnected');
+  });
+
+  it('a refusal the client won\u2019t retry shows as refused, and retry starts over', () => {
+    const socket = fakeSocket();
+    bindConnection(socket.source);
+    socket.connectError(true);
+    expect(useConnection.getState().status).toBe('connecting');
+    socket.connectError(false);
+    expect(useConnection.getState().status).toBe('refused');
+    useConnection.getState().retry();
+    expect(useConnection.getState().status).toBe('connecting');
   });
 });

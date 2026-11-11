@@ -3,7 +3,13 @@ import { HEALTH_PATH, type HealthResponse } from '@clave/shared';
 import cors from 'cors';
 import express, { type Express } from 'express';
 import { Server } from 'socket.io';
-import { clientIp, DEFAULT_IP_LIMITS, IpLimiter, type IpLimitOptions } from './handlers/ipLimits';
+import {
+  clientIp,
+  DEFAULT_IP_LIMITS,
+  IpLimiter,
+  proxyDiagnosis,
+  type IpLimitOptions,
+} from './handlers/ipLimits';
 import { broadcast, registerLobbyHandlers, type IoServer } from './handlers/lobby';
 import type { Logger } from './log';
 import { RoomStore } from './rooms/store';
@@ -91,14 +97,22 @@ export function createServer({
   const limiter = new IpLimiter({ ...DEFAULT_IP_LIMITS, ...ipLimits }, now);
 
   // Too many sockets from one IP: refused before any handler runs (BACKLOG #4).
+  let diagnosed = false;
   io.use((socket, next) => {
+    if (!diagnosed) {
+      // Once per process: lets the deploy confirm TRUST_PROXY_HOPS without logging any address.
+      diagnosed = true;
+      log.info('proxy check', proxyDiagnosis(socket.handshake.headers, trustProxyHops));
+    }
     const ip = clientIp(socket.handshake.address, socket.handshake.headers, trustProxyHops);
     if (!limiter.openSocket(ip)) {
       log.warn('socket rejected: too many connections from one address');
       next(new Error('TOO_MANY_CONNECTIONS'));
       return;
     }
-    socket.once('disconnect', () => {
+    // The transport's close, not the socket's disconnect: a transport that drops between this
+    // middleware and the connection never emits `disconnect` (M8 review).
+    socket.conn.once('close', () => {
       limiter.closeSocket(ip);
     });
     next();

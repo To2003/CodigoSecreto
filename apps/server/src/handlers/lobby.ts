@@ -33,8 +33,8 @@ export interface LobbyContext {
   log: Logger;
   now: () => number;
   limiter: IpLimiter;
-  /** This socket's client address (see clientIp). Never logged: it's personal data. */
-  ip: string;
+  /** This socket's limit key (see clientIp), null when unknown. Never logged: personal data. */
+  ip: string | null;
 }
 
 const channel = (code: string, playerId: string) => `player:${code}:${playerId}`;
@@ -150,16 +150,23 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
   });
 
   on('room:join', ({ roomCode, playerId, token, ...profile }) => {
-    // Past the limit of joins to missing codes, every join is refused until the window ends.
-    if (!limiter.allows(ip, 'failedJoins')) throw new RoomError('RATE_LIMITED');
     const room = store.get(roomCode);
+    // Reclaiming your own seat (F5, reconnect, resync) always works: the token proves it's you.
+    const ownSeat =
+      room !== undefined &&
+      playerId !== undefined &&
+      token !== undefined &&
+      room.players.some((p) => p.id === playerId);
+    // Past the limit of joins to missing codes, new seats and unknown codes get the same answer
+    // until the window ends: no oracle for which codes exist (BACKLOG #4, M8 review).
+    if (!ownSeat && !limiter.allows(ip, 'failedJoins')) throw new RoomError('JOIN_LIMITED');
     if (!room) {
       limiter.count(ip, 'failedJoins');
       throw new RoomError('ROOM_NOT_FOUND');
     }
     if (socket.data.roomCode !== roomCode || socket.data.playerId !== playerId) detach(true);
 
-    if (playerId && token && room.players.some((p) => p.id === playerId)) {
+    if (ownSeat) {
       try {
         const { player, events } = room.rejoin(playerId, token, now());
         if (events.length > 0) broadcast(io, room, events);
@@ -167,7 +174,8 @@ export function registerLobbyHandlers(ctx: LobbyContext, socket: IoSocket) {
         return { roomCode, playerId: player.id, token: player.token };
       } catch (err) {
         if (!(err instanceof RoomError)) throw err;
-        // A wrong token for an existing seat: fall through and take a new seat.
+        // A wrong token for an existing seat: a new seat, under the same limit as any other.
+        if (!limiter.allows(ip, 'failedJoins')) throw new RoomError('JOIN_LIMITED');
       }
     }
     const { player, events } = room.join(profile, now(), newSeat());

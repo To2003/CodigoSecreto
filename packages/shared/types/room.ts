@@ -88,6 +88,7 @@ export type ErrorCode =
   | 'NO_AGENT_LEFT'
   | 'CHAT_DISABLED'
   | 'CHAT_NOT_ALLOWED'
+  | 'JOIN_LIMITED'
   | EngineErrorCode;
 
 export interface ErrorPayload {

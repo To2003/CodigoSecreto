@@ -25,13 +25,24 @@ export interface WakeDeps {
 
 let generation = 0;
 
+/** AbortSignal.timeout, or the same by hand where it's missing (Safari < 16). */
+function timeoutSignal(ms: number): AbortSignal {
+  if (typeof AbortSignal.timeout === 'function') return AbortSignal.timeout(ms);
+  const controller = new AbortController();
+  setTimeout(() => {
+    controller.abort();
+  }, ms);
+  return controller.signal;
+}
+
 /** Pings /health until it answers or 90 s pass. Calling it again (Reintentar) starts over. */
 export async function wake(deps: WakeDeps): Promise<WakeStatus> {
   generation += 1;
   const mine = generation;
   const current = () => mine === generation;
   const start = deps.now();
-  useWake.setState({ status: 'checking' });
+  // A retry after a failure keeps the screen up ("waking"): no flicker, focus stays on it.
+  useWake.setState({ status: useWake.getState().status === 'failed' ? 'waking' : 'checking' });
   const slow = setTimeout(() => {
     if (current() && useWake.getState().status === 'checking')
       useWake.setState({ status: 'waking' });
@@ -42,7 +53,7 @@ export async function wake(deps: WakeDeps): Promise<WakeStatus> {
       try {
         const res = await deps.fetch(deps.url, {
           cache: 'no-store',
-          signal: AbortSignal.timeout(Math.max(1_000, left)),
+          signal: timeoutSignal(Math.max(1_000, left)),
         });
         if (!current()) return useWake.getState().status;
         if (res.ok) {

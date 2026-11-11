@@ -28,6 +28,8 @@ export const t = {
     connected: 'Conectado',
     reconnecting: 'Se te cortó. Reconectando…',
     disconnected: 'Se cortó la conexión. Recargá la página.',
+    refused: 'El servidor no acepta más conexiones desde tu red por ahora.',
+    retry: 'Reintentar',
   },
   landing: {
     newCase: 'Sala nueva',
@@ -585,6 +587,8 @@ export const t = {
     NO_AGENT_LEFT: 'Si lo hacés jefe, el equipo se queda sin agentes para adivinar.',
     CHAT_DISABLED: 'El chat está apagado en esta sala.',
     CHAT_NOT_ALLOWED: 'Quien ve el mapa no escribe durante la partida: solo emotes.',
+    JOIN_LIMITED:
+      'Hubo demasiados intentos de entrar a salas desde tu red. Esperá un minuto y probá de nuevo.',
     CANNOT_START: 'Todavía no se puede empezar: faltan jugadores o palabras.',
     GAME_IN_PROGRESS: 'Ya hay una partida en curso.',
     NO_GAME: 'No hay ninguna partida en curso.',

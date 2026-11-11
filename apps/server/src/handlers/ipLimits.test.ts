@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clientIp, IpLimiter } from './ipLimits';
+import { clientIp, IpLimiter, limitKey, proxyDiagnosis } from './ipLimits';
 
 describe('clientIp', () => {
   it('ignores X-Forwarded-For unless hops are trusted', () => {
@@ -13,9 +13,27 @@ describe('clientIp', () => {
     expect(clientIp('10.0.0.1', headers, 2)).toBe('6.6.6.6');
   });
 
-  it('falls back to the socket address without the header or with too few entries', () => {
-    expect(clientIp('10.0.0.1', {}, 1)).toBe('10.0.0.1');
-    expect(clientIp('10.0.0.1', { 'x-forwarded-for': '203.0.113.7' }, 2)).toBe('10.0.0.1');
+  it('behind a proxy, an address it cannot trust is unknown (null), never the proxy one', () => {
+    expect(clientIp('10.0.0.1', {}, 1)).toBeNull();
+    expect(clientIp('10.0.0.1', { 'x-forwarded-for': '203.0.113.7' }, 2)).toBeNull();
+    // A private entry where the player's should be: the hop count is wrong for this host.
+    expect(clientIp('10.0.0.1', { 'x-forwarded-for': '203.0.113.7, 10.1.2.3' }, 1)).toBeNull();
+    expect(clientIp('10.0.0.1', { 'x-forwarded-for': '100.64.0.9' }, 1)).toBeNull();
+  });
+
+  it('IPv4-mapped IPv6 is plain IPv4; other IPv6 counts by /64', () => {
+    expect(limitKey('::ffff:203.0.113.7')).toBe('203.0.113.7');
+    expect(limitKey('2001:db8:1:2:aaaa::1')).toBe('2001:db8:1:2::/64');
+    expect(limitKey('2001:0db8:0001:0002:bbbb:cccc:dddd:eeee')).toBe('2001:db8:1:2::/64');
+    expect(limitKey('2001:db8::1')).toBe('2001:db8:0:0::/64');
+  });
+
+  it('describes the proxy chain without any address', () => {
+    const d = proxyDiagnosis({ 'x-forwarded-for': '6.6.6.6, 203.0.113.7' }, 1);
+    expect(d).toEqual({ forwardedEntries: 2, trustedHops: 1, chosenEntry: 'public' });
+    expect(JSON.stringify(d)).not.toContain('203');
+    expect(proxyDiagnosis({}, 1).chosenEntry).toBe('none');
+    expect(proxyDiagnosis({ 'x-forwarded-for': '10.0.0.2' }, 1).chosenEntry).toBe('private');
   });
 });
 
@@ -44,6 +62,14 @@ describe('IpLimiter', () => {
     expect(limits.allows('a', 'failedJoins')).toBe(true);
     t = 1_000;
     expect(limits.allows('a', 'rooms')).toBe(true);
+  });
+
+  it('an unknown IP is never limited nor counted', () => {
+    const limits = new IpLimiter(options, () => 0);
+    for (let i = 0; i < 5; i++) expect(limits.openSocket(null)).toBe(true);
+    limits.count(null, 'rooms');
+    expect(limits.allows(null, 'rooms')).toBe(true);
+    limits.closeSocket(null);
   });
 
   it('prunes finished windows', () => {
