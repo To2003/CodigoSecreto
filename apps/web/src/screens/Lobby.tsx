@@ -10,7 +10,7 @@ import { SettingsPanel } from '../components/SettingsPanel';
 import { ChatPanel } from '../components/social/ChatPanel';
 import { EmoteLayer } from '../components/social/EmoteLayer';
 import { t } from '../i18n/es-AR';
-import { navigate } from '../lib/router';
+import { navigate, tablePath } from '../lib/router';
 import {
   kickPlayer,
   leaveRoom,
@@ -322,6 +322,17 @@ export function Lobby({ view }: { view: RoomView }) {
           </div>
         </section>
 
+        <section aria-label={t.table.open} className="flex flex-wrap items-center gap-3 text-sm">
+          <a
+            href={tablePath(view.code)}
+            target="_blank"
+            rel="noopener"
+            className="rounded-md border border-accent px-3 py-1.5 font-semibold text-accent"
+          >
+            {t.table.open}
+          </a>
+          <p className="max-w-xl text-paper/70">{t.table.help}</p>
+        </section>
         <SettingsPanel view={view} editable={isHost} onError={setError} />
         <ChatPanel view={view} />
         <EmoteLayer view={view} />

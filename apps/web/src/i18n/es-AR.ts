@@ -471,6 +471,17 @@ export const t = {
     objection:
       'Si la pista del rival rompe las reglas (rimas, letras, posiciones), la podés objetar antes de que den vuelta la primera carta.',
   },
+  table: {
+    nickname: 'Mesa',
+    open: 'Abrir pantalla de mesa',
+    help: 'Para jugar en persona: abrila en una tele o notebook. Muestra el tablero grande; cada uno juega desde su celu y los jefes ven el mapa ahí.',
+    title: (code: string) => `Sala ${code}`,
+    joinFrom: (url: string) => `Entrá desde el celu a ${url}`,
+    waiting: 'Esperando que el host empiece la partida…',
+    connecting: 'Conectando la mesa…',
+    players: (n: number) => (n === 1 ? '1 jugador en la sala' : `${n} jugadores en la sala`),
+    clue: (clue: string) => `Pista: ${clue}`,
+  },
   coop: {
     side: { red: 'Lado A', blue: 'Lado B' } satisfies Record<Team, string>,
     sideShort: { red: 'A', blue: 'B' } satisfies Record<Team, string>,

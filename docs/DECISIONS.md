@@ -252,3 +252,10 @@ Formato: **Contexto → Decisión → Por qué → Alternativas descartadas**.
 - **Spec**: `docs/specs/M9-cooperativo.md`, la "spec aparte" que pide el SPEC. Cada punto que el SPEC no fija está marcado **[decisión]**: lado A arranca y se alterna; si un mapa ya no tiene agentes, el otro lado da todas las pistas; sin límite de intentos por pista (la presión son los 9 turnos); sin "muerte súbita"; sin objeciones ni timers; chat abierto (todos ven un mapa); con 3 jugadores, dos comparten lado; espectadores sin mapa aunque la sala diga lo contrario.
 - **Motor aparte**: `engine/coop.ts` es un módulo puro propio, no una rama del motor clásico, para no arriesgar el modo que ya funciona. La sala guarda `coop` además de `game` (uno de los dos es null) y la vista sale solo por `toCoopView`, con su escenario en el test anti-filtración (y mutación verificada: dar el mapa del otro lado lo rompe).
 - **Revelar**: el primer toque arma la carta y el segundo la da vuelta, en todos los dispositivos: acá no hay "señalar" para charlar con el equipo, así que el doble toque es la única protección contra un toque sin querer.
+
+## ADR-030 — Modo mesa (M9.2)
+
+- **Estado**: Aceptada (2026-11-11, M9, modo autónomo)
+- **Decisión**: `/sala/CÓDIGO/mesa` es una pantalla, no un jugador: entra sola como espectadora con el nombre "Mesa" y muestra el tablero grande, los contadores, el turno, la pista y el timer. **Nunca** muestra el mapa (aunque la sala deje a los espectadores verlo): está a la vista de todos. Los jefes ven el mapa en el celu, como en una partida online.
+- **Asiento propio**: la mesa guarda su asiento con otra clave (`CÓDIGO:mesa`), así abrirla en otra pestaña del mismo navegador del host no le roba el lugar.
+- **Desde el lobby**: el link "Abrir pantalla de mesa" abre otra pestaña, para que quien la abre no pierda su asiento. Sin QR por ahora (pediría una dependencia más); la mesa muestra la dirección de la sala en grande.

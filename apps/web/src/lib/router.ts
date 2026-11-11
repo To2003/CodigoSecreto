@@ -3,6 +3,8 @@ import { useSyncExternalStore } from 'react';
 export type Route =
   | { name: 'home' }
   | { name: 'room'; code: string }
+  /** Modo mesa (SPEC §12 M9.2): the room on a big screen. */
+  | { name: 'table'; code: string }
   | { name: 'rules' }
   | { name: 'tutorial' }
   | { name: 'notFound' };
@@ -12,6 +14,8 @@ export function parseRoute(pathname: string): Route {
   if (pathname === '/' || pathname === '') return { name: 'home' };
   if (/^\/reglas\/?$/u.test(pathname)) return { name: 'rules' };
   if (/^\/tutorial\/?$/u.test(pathname)) return { name: 'tutorial' };
+  const table = /^\/sala\/([A-Za-z]{4})\/mesa\/?$/u.exec(pathname);
+  if (table?.[1]) return { name: 'table', code: table[1].toUpperCase() };
   const room = /^\/sala\/([A-Za-z]{4})\/?$/u.exec(pathname);
   if (room?.[1]) return { name: 'room', code: room[1].toUpperCase() };
   return { name: 'notFound' };
@@ -44,3 +48,4 @@ export function useRoute(): Route {
 }
 
 export const roomPath = (code: string) => `/sala/${code}`;
+export const tablePath = (code: string) => `/sala/${code}/mesa`;

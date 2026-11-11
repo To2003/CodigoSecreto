@@ -43,11 +43,14 @@ async function request<E extends ClientEventName>(
 
 let currentCode: string | null = null;
 let lastProfile: Profile | null = null;
+/** The table screen (modo mesa) keeps its own seat, so a tab of a player never takes it. */
+let tableSeat = false;
+const seatId = (code: string) => (tableSeat ? `${code}:mesa` : code);
 
 function enter(code: string, ack: Record<string, unknown>) {
   const { playerId, token } = ack;
   if (typeof playerId === 'string' && typeof token === 'string')
-    saveSeat(code, { playerId, token });
+    saveSeat(seatId(code), { playerId, token });
   currentCode = code;
   useRoom.setState({ exit: null });
 }
@@ -57,6 +60,7 @@ export async function createRoom(profile: Profile): Promise<Result<{ roomCode: s
   // A new room starts with an empty chat. Reset before asking: the server sends the chat
   // history right after the state, before the ack arrives.
   social.reset();
+  tableSeat = false;
   const res = await request('room:create', profile);
   if (!res.ok) return res;
   const roomCode = String(res.roomCode);
@@ -65,10 +69,15 @@ export async function createRoom(profile: Profile): Promise<Result<{ roomCode: s
 }
 
 /** Joins, or reclaims the stored seat for this room when there is one (SPEC §2.4). */
-export async function joinRoom(code: string, profile: Profile): Promise<Result> {
+export async function joinRoom(
+  code: string,
+  profile: Profile,
+  options: { table?: boolean } = {},
+): Promise<Result> {
   lastProfile = profile;
+  if (options.table !== undefined) tableSeat = options.table;
   if (currentCode !== code) social.reset();
-  const seat = loadSeat(code);
+  const seat = loadSeat(seatId(code));
   const res = await request('room:join', { ...profile, roomCode: code, ...(seat ?? {}) });
   if (!res.ok) {
     useRoom.setState({ exit: res.code === 'TIMEOUT' ? null : res.code });
@@ -81,7 +90,7 @@ export async function joinRoom(code: string, profile: Profile): Promise<Result> 
 export async function leaveRoom(): Promise<Result> {
   const code = currentCode;
   const res = await request('room:leave', {});
-  if (code) forgetSeat(code);
+  if (code) forgetSeat(seatId(code));
   currentCode = null;
   useRoom.setState({ view: null, seq: -1, lastEvents: [] });
   social.reset();
@@ -134,7 +143,7 @@ socket.on('room:patch', (patch) => {
 });
 
 socket.on('room:kicked', () => {
-  if (currentCode) forgetSeat(currentCode);
+  if (currentCode) forgetSeat(seatId(currentCode));
   currentCode = null;
   useRoom.setState({ view: null, seq: -1, lastEvents: [], exit: 'kicked' });
 });

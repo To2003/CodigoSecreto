@@ -29,7 +29,7 @@ export function RoomScreen({ code }: { code: string }) {
     triedRef.current = true;
     const profile = loadProfile();
     if (!profile || !loadSeat(code)) return;
-    void joinRoom(code, profile).then((res) => {
+    void joinRoom(code, profile, { table: false }).then((res) => {
       setAutoJoining(false);
       if (!res.ok) setError(t.errors[res.code]);
     });
@@ -71,7 +71,7 @@ export function RoomScreen({ code }: { code: string }) {
         busyLabel={t.room.joining(code)}
         onSubmit={async (profile) => {
           setError(null);
-          const res = await joinRoom(code, profile);
+          const res = await joinRoom(code, profile, { table: false });
           if (!res.ok) setError(t.errors[res.code]);
         }}
       />

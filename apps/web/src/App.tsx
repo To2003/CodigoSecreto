@@ -12,6 +12,7 @@ import { useReducedMotion } from './store/prefs';
 // Rules and tutorial are their own chunks (SPEC §10: lazy load).
 const Rules = lazy(() => import('./screens/Rules'));
 const Tutorial = lazy(() => import('./screens/Tutorial'));
+const Table = lazy(() => import('./screens/Table'));
 
 // Motion's features stay out of the initial bundle: the lobby rows animate once they arrive.
 const loadMotionFeatures = () => import('./animations/motionFeatures').then((m) => m.default);
@@ -44,6 +45,15 @@ function Screen() {
       return (
         <>
           <RoomScreen key={route.code} code={route.code} />
+          <WakeScreen onRetry={wakeServer} />
+        </>
+      );
+    case 'table':
+      return (
+        <>
+          <Suspense fallback={null}>
+            <Table key={route.code} code={route.code} />
+          </Suspense>
           <WakeScreen onRetry={wakeServer} />
         </>
       );
