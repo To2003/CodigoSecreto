@@ -128,11 +128,19 @@ export const t = {
     sendClue: 'Mandar pista',
     yourTurnAgents: (clue: string) => `Tu jefe dijo ${clue}. ¿Cuáles son?`,
     guessesLeft: (n: number | null) =>
+      n === null ? 'Intentos sin límite' : n === 1 ? 'Último intento' : `Te quedan ${n} intentos`,
+    /** For whoever watches the guessing (spymaster, rivals, spectators). */
+    guessesLeftOthers: (n: number | null) =>
       n === null
         ? 'Intentos sin límite'
         : n === 1
-          ? 'Te queda 1 intento'
-          : `Te quedan ${n} intentos`,
+          ? 'Les queda el último intento'
+          : `Les quedan ${n} intentos`,
+    /** ADR-034: they hit the clue's number; one more is a bonus, not an obligation. */
+    countReached: (count: number) =>
+      count === 1
+        ? 'Ya acertaron la de la pista. Pueden pasar el turno o arriesgar una más.'
+        : `Ya acertaron las ${count} de la pista. Pueden pasar el turno o arriesgar una más.`,
     endTurn: 'Pasar turno',
     endTurnDisabled: 'Primero tienen que dar vuelta al menos una carta.',
     majorityHint: 'Se da vuelta cuando la mayoría del equipo señala la misma carta.',
@@ -307,7 +315,8 @@ export const t = {
         title: 'Turno',
         body: [
           'El jefe da una pista: una sola palabra y un número, cuántas cartas del tablero conecta. Por ejemplo, MAR · 2.',
-          'Los agentes señalan cartas para charlarlas y dan vuelta las que eligen. Pueden intentar hasta el número más uno.',
+          'Los agentes señalan cartas para charlarlas y dan vuelta las que eligen. Pueden dar vuelta hasta el número de la pista más una: con MAR · 2, hasta 3 cartas. Cuando llegan a ese tope, el turno termina solo.',
+          'La carta de más sirve para recuperar una pista anterior que quedó por la mitad. Si ya acertaron justo el número, el juego resalta "Pasar turno": muchas veces lo mejor es plantarse.',
           'Si dan vuelta un agente propio, siguen. Si es un civil o un agente rival, se termina el turno (el rival se queda con esa carta). También pueden pasar el turno después de arriesgar al menos una.',
           'Con 0 o ∞ como número, los agentes tienen intentos sin límite.',
         ],
@@ -335,6 +344,7 @@ export const t = {
         body: [
           'Para 2 o 3 jugadores, todos contra el tablero. Hay dos lados, A y B, y cada uno tiene su propio mapa de las mismas 25 palabras: 9 agentes, 3 traidores y 13 civiles. Lo que es agente para un lado puede ser civil o traidor para el otro.',
           'Un lado da la pista mirando su mapa y el otro adivina según ese mapa. Un agente queda encontrado; un civil termina el turno (pero puede ser agente del otro mapa, y se puede buscar ahí más adelante); un traidor hace perder a todos.',
+          'Como en el clásico, con cada pista se pueden dar vuelta hasta el número más una (sin límite con 0 o ∞). Al llegar al tope, el turno termina.',
           'Ganan si encuentran a los 15 agentes antes de gastar los 9 turnos. Cada pista gasta un turno. Si un lado ya no tiene agentes por encontrar en su mapa, el otro da todas las pistas que quedan.',
         ],
       },
@@ -435,12 +445,13 @@ export const t = {
         'Este es el tablero: 25 palabras. Hay dos equipos, Rojo y Azul, y cada uno busca a sus agentes escondidos acá.',
       agent:
         'Vos sos agente del Equipo Rojo. Tu jefe ve quién es quién; vos no. Tu laburo es adivinar con sus pistas.',
-      clue: 'Tu jefe dijo MAR · 2. ¿Qué palabras se relacionan con el mar? Tocá las dos.',
+      clue: 'Tu jefe dijo MAR · 2. ¿Qué palabras se relacionan con el mar? Tocá las dos. Con una pista de 2 podés dar vuelta hasta 3 cartas: el número más una.',
       clueRight: (word: string) => `¡Bien! ${word} era un agente rojo.`,
       clueWrong: (word: string) => `${word} no tiene mucho que ver con el mar. Probá con otra.`,
       clueTraitor: (word: string) =>
         `¡Ojo! ${word} es el traidor: si lo tocás, perdés la partida. Acá te lo perdonamos.`,
-      clueDone: 'Encontraste los dos. Así se juega: pista, charla con tu equipo y a dar vuelta.',
+      clueDone:
+        'Encontraste los dos. Te quedaba un intento más, pero acertar justo el número suele ser momento de pasar el turno: arriesgar una tercera sin pista es jugarse a un civil. Así se juega: pista, charla con tu equipo y a dar vuelta.',
       civilian:
         'Esta es un civil. Si tocás un civil, se termina el turno de tu equipo (y no suma para nadie).',
       traitor: 'Y este es el traidor. Es la carta que nunca tenés que tocar: perdés en el acto.',

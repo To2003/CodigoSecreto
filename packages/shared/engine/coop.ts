@@ -52,7 +52,8 @@ export interface CoopClue {
 
 export type CoopPhase =
   | { name: 'clue'; giver: Side }
-  | { name: 'guess'; giver: Side }
+  /** guessesLeft: null = unlimited (count 0 or ∞), like the classic engine (ADR-034). */
+  | { name: 'guess'; giver: Side; guessesLeft: number | null }
   | { name: 'over'; won: boolean; reason: 'agents' | 'traitor' | 'turns' };
 
 export interface CoopState {
@@ -197,7 +198,11 @@ export function applyCoopAction(state: CoopState, action: CoopAction): CoopResul
       const word = action.word.trim().toLocaleUpperCase('es-AR');
       s.clues.push({ giver: phase.giver, word, count: action.count, guesses: [] });
       s.turnsLeft -= 1;
-      s.phase = { name: 'guess', giver: phase.giver };
+      s.phase = {
+        name: 'guess',
+        giver: phase.giver,
+        guessesLeft: action.count === 'inf' || action.count === 0 ? null : action.count + 1,
+      };
       events.push({ type: 'COOP_CLUE', giver: phase.giver, word, count: action.count });
       break;
     }
@@ -218,9 +223,11 @@ export function applyCoopAction(state: CoopState, action: CoopAction): CoopResul
         events.push({ type: 'COOP_OVER', won: false, reason: 'traitor' });
       } else if (result === 'agent') {
         card.found = true;
+        const left = phase.guessesLeft === null ? null : phase.guessesLeft - 1;
         if (totalAgentsLeft(s) === 0) nextTurn(phase.giver);
-        // While the giver's own map still has agents, guessing goes on.
-        else if (agentsLeft(s, phase.giver) === 0) nextTurn(phase.giver);
+        // While the giver's own map still has agents and guesses remain, guessing goes on.
+        else if (agentsLeft(s, phase.giver) === 0 || left === 0) nextTurn(phase.giver);
+        else s.phase = { name: 'guess', giver: phase.giver, guessesLeft: left };
       } else {
         card.civilianFor.push(phase.giver);
         nextTurn(phase.giver);

@@ -160,3 +160,28 @@ test('on a phone, tap to point and tap again to reveal; a late tap only un-point
     'false',
   );
 });
+
+test('clue 1: two guesses at most, the counter says so and the turn ends on its own (ADR-034)', async ({
+  browser,
+}) => {
+  const { ana, beto, caro, dani } = await startGame(browser);
+  const active = await activeTeam(ana.page);
+  const spymaster = active === 'red' ? ana.page : beto.page;
+  const agent = active === 'red' ? caro.page : dani.page;
+  await giveClue(spymaster, '1');
+  await expect(agent.getByTestId('guesses-left')).toHaveText('Te quedan 2 intentos');
+  await expect(spymaster.getByTestId('guesses-left')).toHaveText('Les quedan 2 intentos');
+  const [first, second] = await hiddenWords(spymaster, active);
+  await reveal(agent, first ?? '');
+  // They hit the clue's number: last guess, and "Pasar turno" stands out.
+  await expect(agent.getByTestId('guesses-left')).toHaveText('Último intento');
+  await expect(agent.getByRole('button', { name: 'Pasar turno' })).toHaveAttribute(
+    'data-highlight',
+    'true',
+  );
+  await reveal(agent, second ?? '');
+  await expect(ana.page.getByTestId('turn-banner')).toContainText(
+    active === 'red' ? 'Azul' : 'Rojo',
+  );
+  await expect(agent.getByRole('button', { name: 'Pasar turno' })).toHaveCount(0);
+});

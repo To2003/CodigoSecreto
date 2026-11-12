@@ -8,9 +8,10 @@ import {
 import type { CSSProperties } from 'react';
 import { useId, useState } from 'react';
 import { t } from '../../i18n/es-AR';
-import { endGuessing, giveClue } from '../../net/client';
+import { giveClue } from '../../net/client';
 import { useRoom } from '../../store/room';
 import { Tip } from '../Tip';
+import { GuessControls } from './GuessControls';
 import { ObjectButton, ObjectionPanel } from './Objection';
 import { TimerRing } from './TimerRing';
 
@@ -216,7 +217,6 @@ function PhaseActions({ view, teamName }: { view: RoomView; teamName: (team: Tea
         >
           {clue ? <TypedClue key={game.clues.length} clue={clue} /> : null}
         </p>
-        <p className="text-sm text-paper/80">{t.game.guessesLeft(phase.guessesLeft)}</p>
         <p className="text-sm text-paper/70">
           {view.settings.revealMode === 'majority'
             ? t.game.majorityHint
@@ -224,30 +224,20 @@ function PhaseActions({ view, teamName }: { view: RoomView; teamName: (team: Tea
               ? t.game.pointHintTouch
               : t.game.pointHint}
         </p>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            disabled={!guessed}
-            aria-describedby={guessed ? undefined : 'end-turn-help'}
-            onClick={() => void endGuessing()}
-            className="rounded-md border border-paper/50 px-4 py-2 font-semibold whitespace-nowrap active:scale-97 disabled:opacity-50"
-          >
-            {t.game.endTurn}
-          </button>
-          {!guessed && (
-            <span id="end-turn-help" className="text-sm text-paper/70">
-              {t.game.endTurnDisabled}
-            </span>
-          )}
-        </div>
+        <GuessControls guessesLeft={phase.guessesLeft} count={clue?.count} guessed={guessed} />
       </div>
     );
   }
   return (
-    <p>
-      {onActiveTeam
-        ? t.game.spymasterWatching(clueText)
-        : t.game.rivalGuessing(teamName(phase.team), clueText)}
-    </p>
+    <div className="flex flex-col gap-1">
+      <p>
+        {onActiveTeam
+          ? t.game.spymasterWatching(clueText)
+          : t.game.rivalGuessing(teamName(phase.team), clueText)}
+      </p>
+      <p className="text-sm text-paper/70" data-testid="guesses-left">
+        {t.game.guessesLeftOthers(phase.guessesLeft)}
+      </p>
+    </div>
   );
 }
