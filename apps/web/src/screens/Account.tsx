@@ -1,6 +1,9 @@
 import type { AccountView } from '@clave/shared';
 import { useEffect, useId, useState } from 'react';
-import { PageLink, PageShell } from '../components/PageShell';
+import { DeleteAccount } from '../components/DeleteAccount';
+import { PageShell } from '../components/PageShell';
+import { Button, ButtonLink } from '../components/ui/Button';
+import { IconDoor, IconPodium, IconShield } from '../components/ui/icons';
 import { t } from '../i18n/es-AR';
 import { getAccount, setDisplayName } from '../net/accountsApi';
 import { accountsEnabled, authMode, signIn, signOut } from '../net/auth';
@@ -9,6 +12,7 @@ type State =
   | { name: 'loading' }
   | { name: 'guest' }
   | { name: 'error' }
+  | { name: 'deleted' }
   | { name: 'ready'; account: AccountView };
 
 /** Sign in with Google (or the test sign-in in development). */
@@ -42,21 +46,17 @@ function SignIn() {
               onChange={(e) => {
                 setName(e.target.value);
               }}
-              className="rounded-md border border-line bg-bg px-3 py-2"
+              className="min-h-11 rounded-md border border-line bg-bg px-3 py-2"
             />
           </label>
-          <button type="submit" className="rounded-md bg-accent px-4 py-2 font-semibold text-ink">
+          <Button type="submit" variant="primary">
             {t.accounts.signInDev}
-          </button>
+          </Button>
         </form>
       ) : (
-        <button
-          type="button"
-          onClick={go}
-          className="self-start rounded-md bg-accent px-4 py-2 font-semibold text-ink"
-        >
+        <Button variant="primary" size="lg" className="self-start" onClick={go}>
           {t.accounts.signInGoogle}
-        </button>
+        </Button>
       )}
       {failed && (
         <p role="alert" className="text-sm text-red-soft">
@@ -102,11 +102,11 @@ function NameForm({
           onChange={(e) => {
             setName(e.target.value);
           }}
-          className="min-w-0 flex-1 rounded-md border border-line bg-bg px-3 py-2"
+          className="min-h-11 min-w-0 flex-1 rounded-md border border-line bg-bg px-3 py-2"
         />
-        <button type="submit" className="rounded-md bg-accent px-4 py-2 font-semibold text-ink">
+        <Button type="submit" variant="primary">
           {t.accounts.save}
-        </button>
+        </Button>
       </div>
       <p id={`${id}-help`} className="text-sm text-paper/70">
         {initial === null ? t.accounts.nameEmpty : t.accounts.nameHelp}
@@ -142,7 +142,8 @@ export default function Account() {
     <PageShell title={t.accounts.title}>
       {state.name === 'loading' && <p role="status">{t.accounts.loading}</p>}
       {state.name === 'error' && <p role="alert">{t.accounts.unavailable}</p>}
-      {state.name === 'guest' && <SignIn />}
+      {state.name === 'deleted' && <p role="status">{t.privacy.deleted}</p>}
+      {(state.name === 'guest' || state.name === 'deleted') && <SignIn />}
       {state.name === 'ready' && (
         <>
           <section className="rounded-lg bg-surface p-4">
@@ -189,12 +190,13 @@ export default function Account() {
             <p>{t.accounts.likes(state.account.stats.likesReceived)}</p>
             <p className="mt-2 text-sm text-paper/70">{t.accounts.statsNote}</p>
           </section>
-          <nav className="flex flex-wrap items-center gap-4 text-sm">
-            <PageLink to="/ranking">{t.accounts.toRanking}</PageLink>
-            <PageLink to="/privacidad">{t.accounts.toPrivacy}</PageLink>
-            <button
-              type="button"
-              className="ml-auto rounded-md border border-paper/40 px-3 py-1.5"
+          <div className="flex flex-wrap items-center gap-2">
+            <ButtonLink to="/ranking" variant="secondary" icon={<IconPodium />}>
+              {t.accounts.toRanking}
+            </ButtonLink>
+            <Button
+              variant="secondary"
+              icon={<IconDoor />}
               onClick={() => {
                 void signOut().then(() => {
                   window.location.assign('/');
@@ -202,8 +204,16 @@ export default function Account() {
               }}
             >
               {t.accounts.signOut}
-            </button>
-          </nav>
+            </Button>
+            <ButtonLink to="/privacidad" variant="ghost" icon={<IconShield />}>
+              {t.accounts.toPrivacy}
+            </ButtonLink>
+          </div>
+          <DeleteAccount
+            onDeleted={() => {
+              setState({ name: 'deleted' });
+            }}
+          />
         </>
       )}
     </PageShell>

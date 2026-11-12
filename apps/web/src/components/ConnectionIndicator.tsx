@@ -1,5 +1,6 @@
 import { t } from '../i18n/es-AR';
 import { useConnection, type ConnectionStatus } from '../store/connection';
+import { Button } from './ui/Button';
 
 const DOT: Record<ConnectionStatus, string> = {
   connecting: 'bg-accent',
@@ -26,9 +27,9 @@ export function ConnectionIndicator({ compact = false }: { compact?: boolean }) 
         {t.connection[status]}
       </span>
       {status === 'refused' && (
-        <button type="button" className="font-semibold text-accent underline" onClick={retry}>
+        <Button variant="secondary" size="sm" onClick={retry}>
           {t.connection.retry}
-        </button>
+        </Button>
       )}
     </p>
   );

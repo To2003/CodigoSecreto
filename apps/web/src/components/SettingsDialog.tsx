@@ -1,12 +1,13 @@
 import { useId, useRef } from 'react';
 import { t } from '../i18n/es-AR';
+import { Button } from './ui/Button';
 import { setPrefs, usePrefs, type Prefs } from '../store/prefs';
 
 const CARD_TEXT_SIZES: Prefs['cardText'][] = ['sm', 'md', 'lg'];
 const VOLUME_CHANNELS: (keyof Prefs['volumes'])[] = ['master', 'music', 'effects'];
 
 /** "Ajustes" (SPEC §3.1 #8) in a native <dialog>: focus trap and Esc come for free. */
-export function SettingsButton({ className = 'px-3 py-1 text-sm' }: { className?: string }) {
+export function SettingsButton({ className = 'min-h-9 px-3 text-sm' }: { className?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
   const prefs = usePrefs();
   const id = useId();
@@ -14,7 +15,7 @@ export function SettingsButton({ className = 'px-3 py-1 text-sm' }: { className?
     <>
       <button
         type="button"
-        className={`rounded-md border border-line hover:border-paper/50 ${className}`}
+        className={`btn btn-secondary ${className}`}
         onClick={() => ref.current?.showModal()}
       >
         {t.prefs.open}
@@ -128,9 +129,9 @@ export function SettingsButton({ className = 'px-3 py-1 text-sm' }: { className?
           </label>
         </div>
         <form method="dialog" className="mt-5 text-right">
-          <button type="submit" className="rounded-md bg-accent px-4 py-2 font-semibold text-ink">
+          <Button type="submit" variant="primary">
             {t.prefs.close}
-          </button>
+          </Button>
         </form>
       </dialog>
     </>

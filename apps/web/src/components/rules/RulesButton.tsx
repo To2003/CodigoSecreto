@@ -1,5 +1,6 @@
 import { lazy, Suspense, useRef, useState } from 'react';
 import { t } from '../../i18n/es-AR';
+import { Button } from '../ui/Button';
 
 const RulesContent = lazy(() =>
   import('./RulesContent').then((m) => ({ default: m.RulesContent })),
@@ -14,7 +15,7 @@ export function RulesButton({ className = '' }: { className?: string }) {
     <>
       <button
         type="button"
-        className={`rounded-md border border-line font-bold ${className}`}
+        className={`btn btn-secondary ${className}`}
         onClick={() => {
           setOpen(true);
           ref.current?.showModal();
@@ -41,9 +42,9 @@ export function RulesButton({ className = '' }: { className?: string }) {
           </Suspense>
         )}
         <form method="dialog" className="mt-4 text-right">
-          <button type="submit" className="rounded-md bg-accent px-4 py-2 font-semibold text-ink">
+          <Button type="submit" variant="primary">
             {t.rules.close}
-          </button>
+          </Button>
         </form>
       </dialog>
     </>

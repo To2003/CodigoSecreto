@@ -17,6 +17,7 @@ import { t } from '../i18n/es-AR';
 import { backToLobby } from '../net/client';
 import { usePrefs, useReducedMotion } from '../store/prefs';
 import { useRoom } from '../store/room';
+import { Button } from '../components/ui/Button';
 
 /** One line about what just happened, read by screen readers too (SPEC §10 aria-live). */
 function lastNews(events: RoomEvent[], teamName: (team: Team) => string): string | null {
@@ -45,27 +46,23 @@ function EndGameButton() {
   const [confirming, setConfirming] = useState(false);
   if (!confirming) {
     return (
-      <button
-        type="button"
-        className="text-sm text-paper/70 underline"
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => {
           setConfirming(true);
         }}
       >
         {t.game.backToLobby}
-      </button>
+      </Button>
     );
   }
   return (
     <span className="flex items-center gap-2 text-sm">
       {t.game.endGameConfirm}
-      <button
-        type="button"
-        className="font-semibold text-red-soft underline"
-        onClick={() => void backToLobby()}
-      >
+      <Button variant="danger" size="sm" onClick={() => void backToLobby()}>
         {t.game.endGame}
-      </button>
+      </Button>
     </span>
   );
 }

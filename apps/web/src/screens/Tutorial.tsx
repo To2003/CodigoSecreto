@@ -12,6 +12,8 @@ import {
 import { useEffect, useId, useState } from 'react';
 import { CardArt } from '../art/CardArt';
 import { REVEALED_BG } from '../art/cardStyles';
+import { PageShell } from '../components/PageShell';
+import { Button } from '../components/ui/Button';
 import { t } from '../i18n/es-AR';
 import { navigate } from '../lib/router';
 import { markTutorialDone } from '../lib/storage';
@@ -215,17 +217,20 @@ export default function Tutorial() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-4xl flex-col gap-4 px-3 py-4 sm:px-5">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="font-stamp text-3xl">{t.tutorial.title}</h1>
-        <p className="text-sm text-paper/70">{t.tutorial.step(index + 1, STEPS.length)}</p>
-        {step !== 'done' && (
-          <button type="button" className="text-sm text-paper/80 underline" onClick={finish}>
-            {t.tutorial.exit}
-          </button>
-        )}
-      </header>
-
+    <PageShell
+      title={t.tutorial.title}
+      width="max-w-4xl"
+      aside={
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-paper/70">{t.tutorial.step(index + 1, STEPS.length)}</p>
+          {step !== 'done' && (
+            <Button variant="ghost" size="sm" onClick={finish}>
+              {t.tutorial.exit}
+            </Button>
+          )}
+        </div>
+      }
+    >
       <section
         aria-live="polite"
         className="flex flex-col gap-3 rounded-lg bg-surface p-4"
@@ -276,18 +281,14 @@ export default function Tutorial() {
                 onChange={(e) => {
                   setClue(e.target.value);
                 }}
-                className="min-w-0 flex-1 rounded-md border border-line bg-bg px-3 py-2 uppercase"
+                className="min-h-11 min-w-0 flex-1 rounded-md border border-line bg-bg px-3 py-2 uppercase"
               />
-              <button
-                type="submit"
-                disabled={!check.ok}
-                className="rounded-md bg-accent px-4 py-2 font-semibold text-ink disabled:opacity-50"
-              >
+              <Button type="submit" variant="primary" disabled={!check.ok}>
                 {unsure !== null &&
                 unsure === t.game.clueLine(clue.trim().toLocaleUpperCase('es-AR'), 2)
                   ? t.tutorial.steps.sendAnyway
                   : t.tutorial.steps.send}
-              </button>
+              </Button>
             </div>
             <p id={`${clueId}-error`} role="status" className="min-h-5 text-sm text-red-soft">
               {clue !== '' && !check.ok
@@ -298,22 +299,13 @@ export default function Tutorial() {
         )}
         <div className="flex gap-2">
           {step === 'done' ? (
-            <button
-              type="button"
-              className="rounded-md bg-accent px-4 py-2 font-semibold text-ink"
-              onClick={finish}
-            >
+            <Button variant="primary" onClick={finish}>
               {t.tutorial.steps.finish}
-            </button>
+            </Button>
           ) : (
-            <button
-              type="button"
-              disabled={!canNext}
-              className="rounded-md bg-accent px-4 py-2 font-semibold text-ink disabled:opacity-50"
-              onClick={next}
-            >
+            <Button variant="primary" disabled={!canNext} onClick={next}>
               {t.tutorial.next}
-            </button>
+            </Button>
           )}
         </div>
       </section>
@@ -342,6 +334,6 @@ export default function Tutorial() {
           />
         ))}
       </div>
-    </main>
+    </PageShell>
   );
 }

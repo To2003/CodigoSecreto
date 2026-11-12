@@ -1,6 +1,7 @@
 import type { ClueCount } from '@clave/shared';
 import { t } from '../../i18n/es-AR';
 import { endGuessing } from '../../net/client';
+import { Button } from '../ui/Button';
 
 /**
  * What the guessers see under the clue, in classic and cooperative mode alike (ADR-034): how many
@@ -32,18 +33,16 @@ export function GuessControls({
         </p>
       )}
       <div className="flex items-center gap-3">
-        <button
-          type="button"
+        <Button
+          variant={reached ? 'primary' : 'secondary'}
           disabled={!guessed}
           aria-describedby={guessed ? (reached ? 'count-reached' : undefined) : 'end-turn-help'}
           data-highlight={reached || undefined}
           onClick={() => void endGuessing()}
-          className={`rounded-md px-4 py-2 font-semibold whitespace-nowrap active:scale-97 disabled:opacity-50 ${
-            reached ? 'bg-accent text-ink' : 'border border-paper/50'
-          }`}
+          className="whitespace-nowrap"
         >
           {t.game.endTurn}
-        </button>
+        </Button>
         {!guessed && (
           <span id="end-turn-help" className="text-sm text-paper/70">
             {t.game.endTurnDisabled}
