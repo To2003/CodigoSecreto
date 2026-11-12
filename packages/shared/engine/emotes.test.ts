@@ -44,8 +44,12 @@ describe('coopEmoteBlocked', () => {
     ({ players: [players[0], players[2]], phase }) as unknown as CoopState;
 
   it('blocks the side that gave the clue while the other side guesses with its map', () => {
-    expect(coopEmoteBlocked(coop({ name: 'guess', giver: 'red' }), 'rs')).toBe(true);
-    expect(coopEmoteBlocked(coop({ name: 'guess', giver: 'red' }), 'bs')).toBe(false);
+    expect(coopEmoteBlocked(coop({ name: 'guess', giver: 'red', guessesLeft: null }), 'rs')).toBe(
+      true,
+    );
+    expect(coopEmoteBlocked(coop({ name: 'guess', giver: 'red', guessesLeft: null }), 'bs')).toBe(
+      false,
+    );
     expect(coopEmoteBlocked(coop({ name: 'clue', giver: 'red' }), 'rs')).toBe(false);
     expect(coopEmoteBlocked(coop({ name: 'over', won: true, reason: 'agents' }), 'rs')).toBe(false);
     expect(coopEmoteBlocked(null, 'rs')).toBe(false);

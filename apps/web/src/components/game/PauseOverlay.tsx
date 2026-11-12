@@ -2,6 +2,7 @@ import type { RoomView, Team } from '@clave/shared';
 import { useEffect, useId, useRef, useState } from 'react';
 import { t } from '../../i18n/es-AR';
 import { backToLobby, reassignSpymaster } from '../../net/client';
+import { Button } from '../ui/Button';
 
 /**
  * SPEC §2.4: the game pauses while the active team can't move (its spymaster is away, or nobody is
@@ -98,13 +99,9 @@ export function PauseOverlay({
           </p>
         )}
         {isHost && (
-          <button
-            type="button"
-            className="text-sm text-paper/80 underline"
-            onClick={() => void backToLobby()}
-          >
+          <Button variant="ghost" size="sm" onClick={() => void backToLobby()}>
             {t.game.endGame}
-          </button>
+          </Button>
         )}
       </div>
     </dialog>

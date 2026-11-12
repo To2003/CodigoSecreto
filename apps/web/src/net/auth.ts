@@ -41,6 +41,13 @@ const storage = {
 /** Coming back from Google: Supabase's PKCE callback carries a `code`. */
 const returningFromSignIn = () => new URLSearchParams(window.location.search).has('code');
 
+/** Whether this browser looks signed in, without loading anything (the landing's "Mi cuenta"). */
+export function hasSession(): boolean {
+  if (authMode === 'memory') return storage.get(DEV_TOKEN) !== null;
+  if (authMode === 'supabase') return storage.get(SESSION_FLAG) !== null;
+  return false;
+}
+
 /** The current session token, or null for guests. Cheap for guests: nothing loads. */
 export async function sessionToken(): Promise<string | null> {
   if (authMode === 'memory') return storage.get(DEV_TOKEN);

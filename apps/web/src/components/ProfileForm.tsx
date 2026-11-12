@@ -3,6 +3,7 @@ import { useId, useState } from 'react';
 import { t } from '../i18n/es-AR';
 import { loadProfile, saveProfile } from '../lib/storage';
 import { Avatar } from './Avatar';
+import { Button } from './ui/Button';
 
 const DEFAULT_PROFILE: Profile = { nickname: '', avatar: 0, color: 'oro' };
 
@@ -11,10 +12,12 @@ export function ProfileForm({
   submitLabel,
   busyLabel,
   onSubmit,
+  submitIcon,
   children,
 }: {
   submitLabel: string;
   busyLabel: string;
+  submitIcon?: React.ReactNode;
   onSubmit: (profile: Profile) => Promise<void>;
   children?: React.ReactNode;
 }) {
@@ -118,13 +121,9 @@ export function ProfileForm({
 
       {children}
 
-      <button
-        type="submit"
-        disabled={busy}
-        className="rounded-md bg-accent px-4 py-2 font-semibold text-ink active:scale-97 disabled:opacity-50"
-      >
+      <Button type="submit" variant="primary" size="lg" disabled={busy} icon={submitIcon}>
         {busy ? busyLabel : submitLabel}
-      </button>
+      </Button>
     </form>
   );
 }

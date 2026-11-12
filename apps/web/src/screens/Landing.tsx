@@ -1,25 +1,58 @@
 import { roomCodeSchema } from '@clave/shared';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import { ConnectionIndicator } from '../components/ConnectionIndicator';
 import { ProfileForm } from '../components/ProfileForm';
 import { SettingsButton } from '../components/SettingsDialog';
+import { Button, ButtonLink } from '../components/ui/Button';
+import {
+  IconBook,
+  IconKey,
+  IconLens,
+  IconPerson,
+  IconPlus,
+  IconPodium,
+} from '../components/ui/icons';
 import { t } from '../i18n/es-AR';
 import { navigate, roomPath } from '../lib/router';
+import { getAccount } from '../net/accountsApi';
+import { hasSession } from '../net/auth';
 import { createRoom } from '../net/client';
 
-const LEARN = ['/tutorial', '/reglas', '/ranking', '/cuenta'] as const;
-const LEARN_LABEL: Record<(typeof LEARN)[number], string> = {
-  '/tutorial': t.tutorial.landingLink,
-  '/reglas': t.tutorial.rulesLink,
-  '/ranking': t.ranking.title,
-  '/cuenta': t.accounts.landingAccount,
-};
+/** The signed-in name for "Mi cuenta"; guests never ask the server anything. */
+function useAccountName(): string | null {
+  const [name, setName] = useState<string | null>(null);
+  useEffect(() => {
+    if (!hasSession()) return;
+    void getAccount().then((res) => {
+      if (res.ok) setName(res.data.displayName);
+    });
+  }, []);
+  return name;
+}
+
+/** A case folder: the paper tab on top names what's inside (SPEC §5.4). */
+function Folder({ tab, children }: { tab: string; children: ReactNode }) {
+  return (
+    <section aria-label={tab} className="rounded-lg bg-surface">
+      <h2 className="rounded-t-lg bg-paper-shade px-4 py-1.5 font-stamp text-lg text-ink">{tab}</h2>
+      <div className="p-4">{children}</div>
+    </section>
+  );
+}
 
 export function Landing() {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const codeId = useId();
   const validCode = roomCodeSchema.safeParse(code);
+  const accountName = useAccountName();
+
+  const learn = [
+    { to: '/tutorial', label: t.tutorial.landingLink, icon: <IconLens /> },
+    { to: '/reglas', label: t.tutorial.rulesLink, icon: <IconBook /> },
+    { to: '/ranking', label: t.ranking.title, icon: <IconPodium /> },
+    { to: '/cuenta', label: accountName ?? t.accounts.landingAccount, icon: <IconPerson /> },
+  ];
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-8 px-4 py-10">
@@ -40,56 +73,55 @@ export function Landing() {
           <ConnectionIndicator />
           <SettingsButton />
         </div>
-        <nav aria-label={t.landing.learn} className="flex gap-4 text-sm">
-          {LEARN.map((path) => (
-            <a
-              key={path}
-              href={path}
-              className="text-accent underline"
-              onClick={(e) => {
-                e.preventDefault();
-                navigate(path);
-              }}
-            >
-              {LEARN_LABEL[path]}
-            </a>
-          ))}
-        </nav>
       </header>
 
-      <section className="rounded-lg bg-surface">
-        <p className="rounded-t-lg bg-paper-shade px-4 py-1.5 font-stamp text-ink">
-          {t.landing.newCase}
-        </p>
-        <div className="p-4">
-          <ProfileForm
-            submitLabel={t.landing.create}
-            busyLabel={t.landing.creating}
-            onSubmit={async (profile) => {
-              setError(null);
-              const res = await createRoom(profile);
-              if (res.ok) navigate(roomPath(res.roomCode));
-              else setError(t.errors[res.code]);
-            }}
-          />
-          {error && (
-            <p role="alert" className="mt-3 text-red-soft">
-              {error}
-            </p>
-          )}
-        </div>
-      </section>
+      <nav aria-label={t.landing.learn} className="-mt-2">
+        <ul className="grid grid-cols-2 gap-2">
+          {learn.map((item) => (
+            <li key={item.to} className="flex">
+              <ButtonLink
+                to={item.to}
+                variant="secondary"
+                size="compact"
+                icon={item.icon}
+                className="w-full min-w-0 justify-start"
+                data-testid={item.to === '/cuenta' ? 'landing-account' : undefined}
+              >
+                <span className="truncate">{item.label}</span>
+              </ButtonLink>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
-      <section className="flex flex-col gap-2 rounded-lg bg-surface p-4">
-        <h2 className="text-lg font-semibold">{t.landing.joinTitle}</h2>
+      <Folder tab={t.landing.newCase}>
+        <ProfileForm
+          submitLabel={t.landing.create}
+          busyLabel={t.landing.creating}
+          submitIcon={<IconPlus />}
+          onSubmit={async (profile) => {
+            setError(null);
+            const res = await createRoom(profile);
+            if (res.ok) navigate(roomPath(res.roomCode));
+            else setError(t.errors[res.code]);
+          }}
+        />
+        {error && (
+          <p role="alert" className="mt-3 text-red-soft">
+            {error}
+          </p>
+        )}
+      </Folder>
+
+      <Folder tab={t.landing.joinCase}>
         <form
-          className="flex gap-2"
+          className="flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault();
             if (validCode.success) navigate(roomPath(validCode.data));
           }}
         >
-          <label htmlFor={codeId} className="sr-only">
+          <label htmlFor={codeId} className="text-sm">
             {t.landing.codeLabel}
           </label>
           <input
@@ -103,20 +135,22 @@ export function Landing() {
             onChange={(e) => {
               setCode(e.target.value.toUpperCase());
             }}
-            className="w-28 rounded-md border border-paper/45 bg-bg px-3 py-2 text-center font-mono text-lg tracking-widest text-paper uppercase"
+            className="-mt-2 rounded-md border border-paper/45 bg-bg px-3 py-2.5 text-center font-card text-2xl tracking-[0.4em] text-paper uppercase"
           />
-          <button
+          <p id={`${codeId}-help`} className="-mt-1 text-sm text-paper/70">
+            {t.landing.codeHelp}
+          </p>
+          <Button
             type="submit"
+            variant="primary"
+            size="lg"
             disabled={!validCode.success}
-            className="rounded-md border border-accent px-4 py-2 font-semibold text-accent active:scale-97 disabled:opacity-50"
+            icon={<IconKey />}
           >
             {t.landing.join}
-          </button>
+          </Button>
         </form>
-        <p id={`${codeId}-help`} className="text-sm text-paper/70">
-          {t.landing.codeHelp}
-        </p>
-      </section>
+      </Folder>
 
       <footer className="mt-auto text-center text-xs text-paper/60">{t.app.footer}</footer>
     </main>

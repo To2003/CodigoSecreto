@@ -33,10 +33,23 @@ const notify = () => {
   for (const l of listeners) l();
 };
 
+/** Marks history entries reached by navigating inside the app (not typed, not from Google). */
+const IN_APP = { clave: true } as const;
+
 export function navigate(path: string) {
   if (path === window.location.pathname) return;
-  window.history.pushState(null, '', path);
+  window.history.pushState(IN_APP, '', path);
   notify();
+}
+
+/**
+ * "← Volver" (ADR-035): back to the previous screen when we came from one of ours; to the home
+ * page when this page was opened directly (a shared link, a bookmark, coming back from Google).
+ */
+export function goBack() {
+  const state: unknown = window.history.state;
+  if (typeof state === 'object' && state !== null && 'clave' in state) window.history.back();
+  else navigate('/');
 }
 
 export function useRoute(): Route {

@@ -33,7 +33,7 @@ Agentes distintos para encontrar: 3 + 1 + 5 + 1 + 5 = **15**.
    - **Agente** (para el que dio la pista): queda encontrado y pueden seguir.
    - **Civil** (para el que dio la pista): se termina el turno. La carta queda marcada como "civil para A" (o para B), pero **puede ser un agente del otro mapa** y se puede seguir buscando ahí en un turno futuro, cuando el otro lado dé las pistas.
    - **Traidor** (para el que dio la pista): pierden en el acto.
-   - Pueden parar cuando quieran después de la primera carta. Sin límite de intentos por número (la presión es el contador de turnos). **[decisión]**
+   - Pueden parar cuando quieran después de la primera carta. Como en el clásico, pueden dar vuelta hasta `número + 1` cartas (sin límite con 0 o ∞); al llegar al tope termina el turno. (Antes decía "sin límite de intentos por número"; se corrigió por un bug reportado, ver ADR-034.)
 4. Cada turno (pista + adivinanza) gasta **1 de los 9 turnos**, se acierte o no.
 
 ## 5. Fin de partida

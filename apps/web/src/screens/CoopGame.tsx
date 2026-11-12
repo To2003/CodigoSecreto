@@ -12,12 +12,13 @@ import { CardArt } from '../art/CardArt';
 import { REVEALED_BG } from '../art/cardStyles';
 import { ConnectionIndicator } from '../components/ConnectionIndicator';
 import { ClueInput } from '../components/game/ActionZone';
+import { GuessControls } from '../components/game/GuessControls';
 import { RulesButton } from '../components/rules/RulesButton';
 import { SettingsButton } from '../components/SettingsDialog';
 import { ChatPanel } from '../components/social/ChatPanel';
 import { EmoteLayer } from '../components/social/EmoteLayer';
 import { t } from '../i18n/es-AR';
-import { backToLobby, endGuessing, rematch, revealCard } from '../net/client';
+import { backToLobby, rematch, revealCard } from '../net/client';
 import { useRoom } from '../store/room';
 
 /** How long a first tap keeps a card armed for the revealing second tap. */
@@ -159,23 +160,22 @@ function CoopActions({ view, coop }: { view: RoomView; coop: CoopView }) {
       <p>{t.coop.waitingClue(t.coop.side[phase.giver])}</p>
     );
   }
-  if (giving || coop.side === null) return <p>{t.coop.theyGuess(clueText)}</p>;
+  if (giving || coop.side === null) {
+    return (
+      <div className="flex flex-col gap-1">
+        <p>{t.coop.theyGuess(clueText)}</p>
+        <p className="text-sm text-paper/70" data-testid="guesses-left">
+          {t.game.guessesLeftOthers(phase.guessesLeft)}
+        </p>
+      </div>
+    );
+  }
   const guessed = (clue?.guesses.length ?? 0) > 0;
   return (
     <div className="flex flex-col gap-2">
       <p className="text-lg">{t.coop.yourGuess(clueText)}</p>
       <p className="text-sm text-paper/70">{t.coop.guessHint}</p>
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          disabled={!guessed}
-          onClick={() => void endGuessing()}
-          className="rounded-md border border-paper/50 px-4 py-2 font-semibold whitespace-nowrap active:scale-97 disabled:opacity-50"
-        >
-          {t.game.endTurn}
-        </button>
-        {!guessed && <span className="text-sm text-paper/70">{t.game.endTurnDisabled}</span>}
-      </div>
+      <GuessControls guessesLeft={phase.guessesLeft} count={clue?.count} guessed={guessed} />
     </div>
   );
 }

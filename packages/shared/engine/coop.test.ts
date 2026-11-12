@@ -98,7 +98,7 @@ describe('turn (spec §4)', () => {
     );
     s = clue(s, 'red');
     expect(s.turnsLeft).toBe(COOP_TURNS - 1);
-    expect(s.phase).toEqual({ name: 'guess', giver: 'red' });
+    expect(s.phase).toEqual({ name: 'guess', giver: 'red', guessesLeft: null });
     const agent = cardWith(s, 'agent', 'civilian');
     expect(code(s, { type: 'REVEAL_CARD', playerId: 'a', cardId: agent.id })).toBe('NOT_YOUR_TURN');
     s = reveal(s, 'blue', agent.id);
@@ -239,5 +239,88 @@ describe('end (spec §5)', () => {
     }
     expect(s.turnsLeft).toBe(0);
     expect(s.phase).toEqual({ name: 'over', won: false, reason: 'turns' });
+  });
+});
+
+/**
+ * Guess limit in cooperative mode too (ADR-034): at most `count + 1` cards per clue, unlimited
+ * with 0 or ∞. Reaching the limit ends the turn like "Terminar turno" does.
+ */
+describe('guess limit: count + 1', () => {
+  const clueN = (s: CoopState, giver: Side, count: number | 'inf') =>
+    act(s, { type: 'GIVE_CLUE', playerId: by(giver), word: 'QXZ', count });
+  /** Red gives the clue, blue guesses red's agents; returns how many reveals were accepted. */
+  function guessAgents(s0: CoopState, tries: number) {
+    let s = s0;
+    let accepted = 0;
+    for (let i = 0; i < tries; i++) {
+      const card = s.cards.find((c) => c.key.red === 'agent' && !c.found);
+      if (!card) throw new Error('no agents left');
+      const res = applyCoopAction(s, { type: 'REVEAL_CARD', playerId: 'b', cardId: card.id });
+      if (!res.ok) {
+        expect(res.error.code).toBe('WRONG_PHASE');
+        break;
+      }
+      s = res.state;
+      accepted += 1;
+    }
+    return { s, accepted };
+  }
+
+  for (const [count, tries] of [
+    [1, 3],
+    [2, 4],
+    [3, 5],
+  ] as const) {
+    it(`clue ${String(count)} with ${String(tries)} hits: the turn ends at exactly ${String(count + 1)}`, () => {
+      const s0 = clueN(start(), 'red', count);
+      expect(s0.phase).toEqual({ name: 'guess', giver: 'red', guessesLeft: count + 1 });
+      const { s, accepted } = guessAgents(s0, tries);
+      expect(accepted).toBe(count + 1);
+      // The turn was already spent by the clue; the next clue is blue's.
+      expect(s.phase).toEqual({ name: 'clue', giver: 'blue' });
+      expect(s.turnsLeft).toBe(COOP_TURNS - 1);
+      const extra = s.cards.find((c) => c.key.red === 'agent' && !c.found);
+      expect(code(s, { type: 'REVEAL_CARD', playerId: 'b', cardId: extra?.id ?? '' })).toBe(
+        'WRONG_PHASE',
+      );
+    });
+  }
+
+  it('the last allowed reveal reports the turn change', () => {
+    const s0 = clueN(start(), 'red', 1);
+    const once = act(s0, {
+      type: 'REVEAL_CARD',
+      playerId: 'b',
+      cardId: cardWith(s0, 'agent', 'civilian').id,
+    });
+    expect(once.phase).toEqual({ name: 'guess', giver: 'red', guessesLeft: 1 });
+    const res = applyCoopAction(once, {
+      type: 'REVEAL_CARD',
+      playerId: 'b',
+      cardId: cardWith(once, 'agent', 'civilian').id,
+    });
+    expect(res.ok && res.events.map((e) => e.type)).toEqual(['COOP_GUESS', 'COOP_TURN']);
+  });
+
+  for (const count of [0, 'inf'] as const) {
+    it(`clue ${String(count)} has no limit`, () => {
+      const s0 = clueN(start(), 'red', count);
+      expect(s0.phase).toEqual({ name: 'guess', giver: 'red', guessesLeft: null });
+      const { s, accepted } = guessAgents(s0, 8);
+      expect(accepted).toBe(8);
+      expect(s.phase).toEqual({ name: 'guess', giver: 'red', guessesLeft: null });
+    });
+  }
+
+  it('hitting exactly the count and stopping ends the turn', () => {
+    const s0 = clueN(start(), 'red', 2);
+    const { s, accepted } = guessAgents(s0, 2);
+    expect(accepted).toBe(2);
+    expect(s.phase).toEqual({ name: 'guess', giver: 'red', guessesLeft: 1 });
+    expect(act(s, { type: 'END_GUESSING', playerId: 'b' }).phase).toEqual({
+      name: 'clue',
+      giver: 'blue',
+    });
   });
 });

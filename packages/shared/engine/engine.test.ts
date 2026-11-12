@@ -840,3 +840,113 @@ describe('SET_SPYMASTER (host reassigns, SPEC §2.4)', () => {
     fail(over, { type: 'SET_SPYMASTER', team, playerId: agent(team) }, 'WRONG_PHASE');
   });
 });
+
+/**
+ * Guess limit (SPEC §1.4.2): at most `count + 1` reveals, unlimited with 0 or ∞. Reported by a
+ * player as "clue 1, they could take a third guess": each case tries one guess past the limit.
+ */
+describe('guess limit: count + 1', () => {
+  /** Reveals own agents one by one; returns the state and how many reveals the engine accepted. */
+  function guessOwn(s0: GameState, tries: number, settings: Partial<Settings> = {}) {
+    let s = s0;
+    const team = activeTeam(s);
+    let accepted = 0;
+    for (let i = 0; i < tries; i++) {
+      const card = firstOf(s, team);
+      const action: Action =
+        settings.revealMode === 'majority'
+          ? { type: 'POINT_CARD', playerId: agent(team), cardId: card.id }
+          : { type: 'REVEAL_CARD', playerId: agent(team), cardId: card.id };
+      const res = apply(s, action);
+      if (!res.ok) {
+        expect(res.error.code).toBe('WRONG_PHASE');
+        break;
+      }
+      if (settings.revealMode === 'majority') {
+        const second = apply(res.state, {
+          type: 'POINT_CARD',
+          playerId: agent2(team),
+          cardId: card.id,
+        });
+        if (!second.ok) throw new Error(second.error.code);
+        s = second.state;
+      } else s = res.state;
+      accepted += 1;
+      if (s.phase.name !== 'guess') {
+        // The turn is over: one more try must be refused.
+        fail(
+          s,
+          { type: 'REVEAL_CARD', playerId: agent(team), cardId: firstOf(s, team).id },
+          'WRONG_PHASE',
+        );
+        break;
+      }
+    }
+    return { s, team, accepted };
+  }
+
+  for (const [count, tries] of [
+    [1, 3],
+    [2, 4],
+    [3, 5],
+  ] as const) {
+    it(`clue ${String(count)} with ${String(tries)} hits: the turn ends at exactly ${String(count + 1)}`, () => {
+      const s0 = clue(start(), count);
+      const { s, team, accepted } = guessOwn(s0, tries);
+      expect(accepted).toBe(count + 1);
+      expect(s.phase).toEqual({ name: 'clue', team: otherTeam(team) });
+      expect(s.teamTurns[otherTeam(team)]).toBe(s0.teamTurns[otherTeam(team)] + 1);
+    });
+
+    it(`clue ${String(count)} in majority mode also stops at ${String(count + 1)}`, () => {
+      const s0 = clue(start({ revealMode: 'majority' }), count);
+      const { s, team, accepted } = guessOwn(s0, tries, { revealMode: 'majority' });
+      expect(accepted).toBe(count + 1);
+      expect(s.phase).toEqual({ name: 'clue', team: otherTeam(team) });
+    });
+  }
+
+  it('counts down one per hit and says how many are left', () => {
+    let s = clue(start(), 2);
+    const team = activeTeam(s);
+    expect(s.phase).toMatchObject({ name: 'guess', guessesLeft: 3 });
+    s = ok(s, { type: 'REVEAL_CARD', playerId: agent(team), cardId: firstOf(s, team).id }).state;
+    expect(s.phase).toMatchObject({ name: 'guess', guessesLeft: 2 });
+    s = ok(s, { type: 'REVEAL_CARD', playerId: agent(team), cardId: firstOf(s, team).id }).state;
+    expect(s.phase).toMatchObject({ name: 'guess', guessesLeft: 1 });
+  });
+
+  it('a rejected objection keeps the count, it does not reset it', () => {
+    let s = clue(start(), 1);
+    const team = activeTeam(s);
+    s = ok(s, { type: 'OBJECT_CLUE', playerId: spy(otherTeam(team)) }).state;
+    for (const id of [agent(team), agent2(team), agent(otherTeam(team)), agent2(otherTeam(team))]) {
+      if (s.phase.name !== 'objection') break;
+      s = ok(s, { type: 'VOTE_OBJECTION', playerId: id, accept: false }).state;
+    }
+    expect(s.phase).toMatchObject({ name: 'guess', guessesLeft: 2 });
+    const { accepted } = guessOwn(s, 3);
+    expect(accepted).toBe(2);
+  });
+
+  for (const count of [0, 'inf'] as const) {
+    it(`clue ${String(count)} has no limit`, () => {
+      const s0 = clue(start(), count);
+      const team = activeTeam(s0);
+      const { s, accepted } = guessOwn(s0, cardsOf(s0, team).length - 1);
+      expect(accepted).toBe(cardsOf(s0, team).length - 1);
+      expect(s.phase).toEqual({ name: 'guess', team, guessesLeft: null });
+    });
+  }
+
+  it('hitting exactly the count and stopping ends the turn', () => {
+    const s0 = clue(start(), 2);
+    const team = activeTeam(s0);
+    const { s, accepted } = guessOwn(s0, 2);
+    expect(accepted).toBe(2);
+    expect(s.phase).toEqual({ name: 'guess', team, guessesLeft: 1 });
+    const res = ok(s, { type: 'END_GUESSING', playerId: agent(team) });
+    expect(res.state.phase).toEqual({ name: 'clue', team: otherTeam(team) });
+    expect(res.events).toEqual([{ type: 'TURN_CHANGED', team: otherTeam(team), reason: 'ended' }]);
+  });
+});

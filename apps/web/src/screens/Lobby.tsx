@@ -20,6 +20,7 @@ import {
   startGame,
   type Result,
 } from '../net/client';
+import { Button, buttonClass } from '../components/ui/Button';
 
 function PlayerRow({ player, view }: { player: PublicPlayer; view: RoomView }) {
   const isYou = player.id === view.youId;
@@ -308,9 +309,10 @@ export function Lobby({ view }: { view: RoomView }) {
                 </button>
               </>
             )}
-            <button
-              type="button"
-              className="ml-auto rounded-md px-3 py-2 text-sm text-paper/70 underline"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto"
               onClick={() => {
                 void leaveRoom().then(() => {
                   navigate('/');
@@ -318,16 +320,17 @@ export function Lobby({ view }: { view: RoomView }) {
               }}
             >
               {t.lobby.leave}
-            </button>
+            </Button>
           </div>
         </section>
 
         <section aria-label={t.table.open} className="flex flex-wrap items-center gap-3 text-sm">
+          {/* A real link: the table view opens in its own tab (or on the TV). */}
           <a
             href={tablePath(view.code)}
             target="_blank"
             rel="noopener"
-            className="rounded-md border border-accent px-3 py-1.5 font-semibold text-accent"
+            className={buttonClass('secondary', 'sm')}
           >
             {t.table.open}
           </a>
